@@ -1,0 +1,21 @@
+# Build directories
+build/
+install/
+dist/
+bundle/
+
+# CMake build artifacts
+CMakeCache.txt
+CMakeFiles/
+...
+*.o
+*.a
+
+.qtcreator/
+
+
+# Android generated files
+android/gradle/wrapper/gradle-wrapper.jar
+android/gradlew
+android/gradlew.bat
+android/res/values/libs.xml

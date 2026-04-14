@@ -1,0 +1,33 @@
+# release.yml
+name: Release Dispatcher
+
+permissions:
+  contents: write
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Platform to build'
+        required: true
+        type: choice
+        options:
+          - linux
+          - windows
+          - macos
+          - all
+
+jobs:
+  linux:
+    if: ${{ inputs.platform == 'linux' || inputs.platform == 'all' }}
+    uses: ./.github/workflows/release-linux.yml
+
+  windows:
+    if: ${{ inputs.platform == 'windows' || inputs.platform == 'all' }}
+    uses: ./.github/workflows/release-windows.yml
+
+  macos:
+    if: ${{ inputs.platform == 'macos' || inputs.platform == 'all' }}
+    uses: ./.github/workflows/release-mac.yml
+
+

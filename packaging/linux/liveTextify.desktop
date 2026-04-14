@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=LiveTextify
+Comment=Voice to Text to Insight
+Exec=liveTextify
+Icon=liveTextify
+Terminal=false
+Categories=Utility;

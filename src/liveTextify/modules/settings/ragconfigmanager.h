@@ -1,0 +1,56 @@
+#pragma once
+#include "liveTextify/modules/engines/common.h"
+
+class RAGConfigManager: public QObject{
+    Q_OBJECT
+    Q_PROPERTY(bool enabled READ enabled WRITE setEnabled NOTIFY enabledChanged FINAL)
+    Q_PROPERTY(int  minChunkSize READ minChunkSize WRITE setMinChunkSize NOTIFY minChunkSizeChanged FINAL)
+    Q_PROPERTY(int  maxChunkSize READ maxChunkSize WRITE setMaxChunkSize NOTIFY maxChunkSizeChanged FINAL)
+    Q_PROPERTY(int  topKResults READ topKResults WRITE setTopKResults NOTIFY topKResultsChanged FINAL)
+    Q_PROPERTY(int  embeddingDimension READ embeddingDimension WRITE setEmbeddingDimension NOTIFY embeddingDimensionChanged FINAL)
+    Q_PROPERTY(qreal minSimilarityScore  READ minSimilarityScore  WRITE setMinSimilarityScore  NOTIFY minSimilarityScoreChanged FINAL)
+    Q_PROPERTY(qreal lengthBoostFactor  READ lengthBoostFactor  WRITE setLengthBoostFactor  NOTIFY lengthBoostFactorChanged FINAL)
+    Q_PROPERTY(qreal fillerThreshold READ fillerThreshold WRITE setFillerThreshold NOTIFY fillerThresholdChanged FINAL)
+public:
+    explicit RAGConfigManager(QObject * parent = nullptr);
+
+    // Getters
+    bool enabled()              const { return mConfig.enabled; }
+    int minChunkSize()          const { return mConfig.minChars; }
+    int maxChunkSize()          const { return mConfig.maxChars; }
+    int topKResults()           const { return mConfig.topK; }
+    int embeddingDimension()    const { return mConfig.dim; }
+    qreal minSimilarityScore()  const { return mConfig.minScore; }
+    qreal lengthBoostFactor()   const { return mConfig.lengthBoost; }
+    qreal fillerThreshold()     const { return mConfig.fillerLimit; }
+
+    // Setters
+    void setEnabled(bool);
+    void setMinChunkSize(int);
+    void setMaxChunkSize(int);
+    void setTopKResults(int);
+    void setEmbeddingDimension(int);
+    void setMinSimilarityScore(qreal);
+    void setLengthBoostFactor(qreal);
+    void setFillerThreshold(qreal);
+
+
+    // State management
+    const RAGConfig& config() const { return mConfig; }
+    Q_INVOKABLE void resetToDefaults();
+
+    void loadFromSettings();
+    void saveToSettings();
+signals:
+    void enabledChanged();
+    void minChunkSizeChanged();
+    void maxChunkSizeChanged();
+    void topKResultsChanged();
+    void embeddingDimensionChanged();
+    void minSimilarityScoreChanged();
+    void lengthBoostFactorChanged();
+    void fillerThresholdChanged();
+private:
+    RAGConfig mConfig;
+};
+

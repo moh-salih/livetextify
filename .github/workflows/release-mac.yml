@@ -1,0 +1,80 @@
+name: Release Workflow (macOS)
+
+permissions:
+  contents: write
+on:
+  workflow_call:
+  push:
+    tags: [ "v*" ]
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.0'
+          host: mac
+          target: desktop
+          modules: qtmultimedia
+          cache: true
+
+      - name: Cache vcpkg
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ github.workspace }}/vcpkg_installed
+            ${{ github.workspace }}/vcpkg/buildtrees
+            ${{ github.workspace }}/vcpkg/packages
+          key: vcpkg-macos-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json') }}
+          restore-keys: |
+            vcpkg-macos-
+
+      - name: vcpkg (manifest mode)
+        uses: johnwason/vcpkg-action@v7
+        with:
+          manifest-dir: ${{ github.workspace }}
+          triplet: arm64-osx
+          token: ${{ github.token }}
+          extra-args: --clean-buildtrees-after-build
+
+      - name: Configure CMake
+        run: |
+          cmake -B build -S . \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_OSX_ARCHITECTURES=arm64 \
+            -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Install
+        run: cmake --install build --prefix ${{ github.workspace }}/install
+
+      - name: Package DMG
+        run: |
+          # macdeployqt is the Mac equivalent of linuxdeploy — it bundles Qt into the .app
+          ${{ env.QT_ROOT_DIR }}/bin/macdeployqt \
+            install/liveTextify.app \
+            -qmldir=${{ github.workspace }}/qml \
+            -dmg
+
+          mv install/liveTextify.dmg liveTextify-mac-arm64.dmg
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: liveTextify-macos
+          path: liveTextify-mac-arm64.dmg
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: liveTextify-mac-arm64.dmg
+
