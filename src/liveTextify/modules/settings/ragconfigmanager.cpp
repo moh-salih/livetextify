@@ -5,64 +5,64 @@
 RAGConfigManager::RAGConfigManager(QObject * parent): QObject(parent) {}
 
 void RAGConfigManager::setEnabled(bool value){
-    if(mConfig.enabled == value) return;
-    mConfig.enabled = value;
-    saveToSettings();
+    if(mEnabled == value) return;
+    mEnabled = value;
+
     emit enabledChanged();
 }
 
 void RAGConfigManager::setMinChunkSize(int value){
-    if(mConfig.minChars == value) return;
-    mConfig.minChars = value;
-    saveToSettings();
+    if(mConfig.chunking.minChunkLength == value) return;
+    mConfig.chunking.minChunkLength = value;
+
     emit minChunkSizeChanged();
 }
 
 void RAGConfigManager::setMaxChunkSize(int value){
-    if(mConfig.maxChars == value) return;
-    mConfig.maxChars = value;
-    saveToSettings();
+    if(mConfig.chunking.maxChunkLength == value) return;
+    mConfig.chunking.maxChunkLength = value;
+
     emit maxChunkSizeChanged();
 }
 
 void RAGConfigManager::setTopKResults(int value){
-    if(mConfig.topK == value) return;
-    mConfig.topK = value;
-    saveToSettings();
+    if(mConfig.search.topK == value) return;
+    mConfig.search.topK = value;
+
     emit topKResultsChanged();
 }
 
 void RAGConfigManager::setEmbeddingDimension(int value){
-    if(mConfig.dim == value) return;
-    mConfig.dim = value;
-    saveToSettings();
+    if(mConfig.index.dim == value) return;
+    mConfig.index.dim = value;
+
     emit embeddingDimensionChanged();
 }
 
 void RAGConfigManager::setMinSimilarityScore(qreal value){
-    if(qFuzzyCompare(mConfig.minScore, static_cast<float>(value))) return;
-    mConfig.minScore = value;
-    saveToSettings();
+    if(qFuzzyCompare(mConfig.search.minSimilarity, static_cast<float>(value))) return;
+    mConfig.search.minSimilarity = value;
+
     emit minSimilarityScoreChanged();
 }
 
 void RAGConfigManager::setLengthBoostFactor(qreal value){
-    if(qFuzzyCompare(mConfig.lengthBoost, static_cast<float>(value))) return;
-    mConfig.lengthBoost = value;
-    saveToSettings();
+    if(qFuzzyCompare(mConfig.chunking.lengthBoostFactor, static_cast<float>(value))) return;
+    mConfig.chunking.lengthBoostFactor = value;
+
     emit lengthBoostFactorChanged();
 }
 
 void RAGConfigManager::setFillerThreshold(qreal value){
-    if(qFuzzyCompare(mConfig.fillerLimit, static_cast<float>(value))) return;
-    mConfig.fillerLimit = value;
-    saveToSettings();
+    if(qFuzzyCompare(mConfig.chunking.fillerWordLimit, static_cast<float>(value))) return;
+    mConfig.chunking.fillerWordLimit = value;
+
     emit fillerThresholdChanged();
 }
 
 void RAGConfigManager::resetToDefaults(){
-    mConfig = RAGConfig();
-    saveToSettings();
+    mConfig = RagConfig();
+    mEnabled = true;
 
     emit enabledChanged();
     emit minChunkSizeChanged();
@@ -72,42 +72,36 @@ void RAGConfigManager::resetToDefaults(){
     emit minSimilarityScoreChanged();
     emit lengthBoostFactorChanged();
     emit fillerThresholdChanged();
+    emit configChanged();
 }
 
-void RAGConfigManager::loadFromSettings(){
-    RAGConfig defaultConfig;
-    QSettings settings;
-
-    settings.beginGroup("RAG");
-    mConfig.enabled         = settings.value("enabled", defaultConfig.enabled).toBool();
-    mConfig.minChars        = settings.value("minChars", defaultConfig.minChars).toInt();
-    mConfig.maxChars        = settings.value("maxChars", defaultConfig.maxChars).toInt();
-    mConfig.topK            = settings.value("topK", defaultConfig.topK).toInt();
-    mConfig.dim             = settings.value("dim", defaultConfig.dim).toInt();
-    mConfig.minScore        = settings.value("minScore", defaultConfig.minScore).toFloat();
-    mConfig.lengthBoost     = settings.value("lengthBoost", defaultConfig.lengthBoost).toFloat();
-    mConfig.fillerLimit     = settings.value("fillerLimit", defaultConfig.fillerLimit).toFloat();
-    settings.endGroup();
-
-    Logger::info("=== RAG CONFIG LOADED ===");
-    Logger::info(QString("  Enabled: %1").arg(mConfig.enabled ? "true" : "false"));
-    Logger::info(QString("  Min Chars: %1, Max Chars: %2").arg(mConfig.minChars).arg(mConfig.maxChars));
-    Logger::info(QString("  Top K: %1, Dimension: %2").arg(mConfig.topK).arg(mConfig.dim));
-    Logger::info(QString("  Min Score: %1, Length Boost: %2, Filler Limit: %3").arg(mConfig.minScore).arg(mConfig.lengthBoost).arg(mConfig.fillerLimit));
+void RAGConfigManager::loadFromSettings() {
+    RagConfig def;
+    QSettings s;
+    s.beginGroup("RAG");
+    mEnabled                           = s.value("enabled", true).toBool();
+    mConfig.chunking.minChunkLength    = s.value("minChars",     def.chunking.minChunkLength).toInt();
+    mConfig.chunking.maxChunkLength    = s.value("maxChars",     def.chunking.maxChunkLength).toInt();
+    mConfig.chunking.lengthBoostFactor = s.value("lengthBoost",  def.chunking.lengthBoostFactor).toFloat();
+    mConfig.chunking.fillerWordLimit   = s.value("fillerLimit",  def.chunking.fillerWordLimit).toFloat();
+    mConfig.index.dim                  = s.value("dim",          def.index.dim).toInt();
+    mConfig.search.topK                = s.value("topK",         def.search.topK).toInt();
+    mConfig.search.minSimilarity       = s.value("minScore",     def.search.minSimilarity).toFloat();
+    s.endGroup();
 }
 
-void RAGConfigManager::saveToSettings(){
-    QSettings settings;
-    settings.beginGroup("RAG");
-    settings.setValue("enabled", mConfig.enabled);
-    settings.setValue("minChars", mConfig.minChars);
-    settings.setValue("maxChars", mConfig.maxChars);
-    settings.setValue("topK", mConfig.topK);
-    settings.setValue("dim", mConfig.dim);
-    settings.setValue("minScore", mConfig.minScore);
-    settings.setValue("lengthBoost", mConfig.lengthBoost);
-    settings.setValue("fillerLimit", mConfig.fillerLimit);
-    settings.endGroup();
-    settings.sync();
+void RAGConfigManager::saveToSettings() {
+    QSettings s;
+    s.beginGroup("RAG");
+    s.setValue("enabled",     mEnabled);
+    s.setValue("minChars",    mConfig.chunking.minChunkLength);
+    s.setValue("maxChars",    mConfig.chunking.maxChunkLength);
+    s.setValue("lengthBoost", mConfig.chunking.lengthBoostFactor);
+    s.setValue("fillerLimit", mConfig.chunking.fillerWordLimit);
+    s.setValue("dim",         mConfig.index.dim);
+    s.setValue("topK",        mConfig.search.topK);
+    s.setValue("minScore",    mConfig.search.minSimilarity);
+    s.endGroup();
+    s.sync();
 }
 

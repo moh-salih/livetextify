@@ -1,0 +1,12 @@
+[submodule "third_party/QtLlama"]
+	path = third_party/QtLlama
+	url = https://github.com/moh-salih/QtLlama.git
+[submodule "third_party/QtWhisper"]
+	path = third_party/QtWhisper
+	url = https://github.com/moh-salih/QtWhisper.git
+[submodule "third_party/QtAudioCapture"]
+	path = third_party/QtAudioCapture
+	url = https://github.com/moh-salih/QtAudioCapture.git
+[submodule "third_party/QtRag"]
+	path = third_party/QtRag
+	url = https://github.com/moh-salih/QtRag.git

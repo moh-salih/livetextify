@@ -15,4 +15,6 @@ public:
     // Q_INVOKABLE bool hasPermission(const QString& permission);
     // Q_INVOKABLE void shareText(const QString& text);
     // Q_INVOKABLE void showToast(const QString& message);
+
+    Q_INVOKABLE void requestMicrophoneAccess();
 };

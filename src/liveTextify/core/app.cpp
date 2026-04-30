@@ -8,9 +8,12 @@
 #include "liveTextify/modules/session/sessionmanager.h"
 #include "liveTextify/modules/models/modelmanager.h"
 
-#include "liveTextify/modules/engines/stt/sttsession.h"
-#include "liveTextify/modules/engines/llm/llmsession.h"
-#include "liveTextify/modules/engines/emb/embsession.h"
+#include <QtWhisper/Types.h>
+#include <QtWhisper/Session.h>
+#include <QtLlama/Types.h>
+#include <QtLlama/Session.h>
+#include <QtLlama/Embedder.h>
+#include <QtAudioCapture/Types.h>
 
 #include <QQmlContext>
 #include <QIcon>
@@ -151,31 +154,39 @@ void App::setupControllers(){
     if(dbInitialized){
         DatabaseManager::instance()->createTables(createTables);
     }
-    qmlRegisterUncreatableMetaObject( LiveTextify::staticMetaObject, "LiveTextify", 1, 0, "LiveTextify", "Accessing the LiveTextify namespace directly is not allowed.");
+ 
 
-    qmlRegisterUncreatableType<SttSession>("LiveTextify", 1, 0, "SttSession", "SttSession is an enum type, cannot be instantiated");
-    qmlRegisterUncreatableType<LlmSession>("LiveTextify", 1, 0, "LlmSession", "LlmSession is an enum type, cannot be instantiated");
-    qmlRegisterUncreatableType<EmbSession>("LiveTextify", 1, 0, "EmbSession", "EmbSession is an enum type, cannot be instantiated");
+
+  // Register Namespaces for Enums
+    qmlRegisterUncreatableMetaObject(QtWhisper::staticMetaObject, "QtWhisper", 1, 0, "QtWhisper", "Enum namespace");
+    qmlRegisterUncreatableMetaObject(QtLlama::staticMetaObject, "QtLlama", 1, 0, "QtLlama", "Enum namespace");
+    // qmlRegisterUncreatableMetaObject(QtAudioCapture::staticMetaObject, "QtAudioCapture", 1, 0, "QtAudioCapture", "Enum namespace");
+
+    // Register Type bindings
+    qmlRegisterUncreatableType<QtWhisper::Session>("LiveTextify", 1, 0, "WhisperSession", "Cannot instantiate");
+    qmlRegisterUncreatableType<QtLlama::Session>("LiveTextify", 1, 0, "LlamaSession", "Cannot instantiate");
+    qmlRegisterUncreatableType<QtLlama::Embedder>("LiveTextify", 1, 0, "LlamaEmbedder", "Cannot instantiate");
+    
 
 
     mSettingsManager = new SettingsManager(this);
     mResourceManager = new ResourceManager(this);
     mPlatformManager = &PlatformManager::instance();
     mSessionManager  = new SessionManager(mSettingsManager, this);
+    mModelManager    = new ModelManager(this);
 
-    mWhisperManager         = new ModelManager("defaultSttPath", this);
-    mLLamaManager           = new ModelManager("defaultLlmPath", this);
-    mEmbeddingManager       = new ModelManager("defaultEmbeddingModelPath", this);
+
+    connect(mModelManager,    &ModelManager::defaultModelChanged, mSettingsManager, &SettingsManager::onDefaultModelChanged);
+
+    mSettingsManager->reload();
+
 
     auto ctx = mEngine.rootContext();
     ctx->setContextProperty("PlatformManager", mPlatformManager);
     ctx->setContextProperty("SettingsManager", mSettingsManager);
     ctx->setContextProperty("ResourceManager", mResourceManager);
-
-    ctx->setContextProperty("SessionManager",       mSessionManager);
-    ctx->setContextProperty("LlamaManager",         mLLamaManager);
-    ctx->setContextProperty("WhisperManager",       mWhisperManager);
-    ctx->setContextProperty("EmbeddingManager",     mEmbeddingManager);
+    ctx->setContextProperty("SessionManager",  mSessionManager);
+    ctx->setContextProperty("ModelManager",    mModelManager);
 
 
     if (mPlatformManager->isAndroid()) {
@@ -197,16 +208,14 @@ void App::setupConnections()
             
     connect(&mEngine, &QQmlApplicationEngine::quit, &mApp, &QGuiApplication::quit);
 }
-
 void App::loadInitialConfigs(){
     QQuickStyle::setStyle("Material");
 
-    mWhisperManager->loadDefaultModel();
-    mWhisperManager->loadConfig(":/data/whisper_models.json");
+    mModelManager->stt()->loadConfig(":/data/whisper_models.json");
+    mModelManager->llm()->loadConfig(":/data/llama_models.json");
+    mModelManager->emb()->loadConfig(":/data/embedding_models.json");
 
-    mLLamaManager->loadDefaultModel();
-    mLLamaManager->loadConfig(":/data/llama_models.json");
-
-    mEmbeddingManager->loadDefaultModel();
-    mEmbeddingManager->loadConfig(":/data/embedding_models.json");
+    mModelManager->stt()->syncSelectedPath(mSettingsManager->sttConfigManager()->modelPath());
+    mModelManager->llm()->syncSelectedPath(mSettingsManager->llmConfigManager()->modelPath());
+    mModelManager->emb()->syncSelectedPath(mSettingsManager->embConfigManager()->modelPath());
 }

@@ -40,7 +40,7 @@ SettingsSection {
 
         SettingsSlider { label: "Thread Count"; valueText: Number(root.threadCount).toString(); from: 1; to: 32; value: root.threadCount; onValueChanged: root.threadCount = value; themeColor: Theme.tertiary; Layout.fillWidth: true }
         SettingsSlider { label: "Batch Threads"; valueText: Number(root.batchThreads).toString(); from: 1; to: 32; value: root.batchThreads; onValueChanged: root.batchThreads = value; themeColor: Theme.tertiary; Layout.fillWidth: true }
-        SettingsSlider { label: "Context Length"; valueText: Number(root.contextLength).toString(); from: 512; to: 32768; stepSize: 512; value: root.contextLength; onValueChanged: root.contextLength = value; themeColor: Theme.primary; Layout.fillWidth: true }
+        SettingsSlider { label: "Context Length"; valueText: Number(root.contextLength).toString(); from: 0; to: 32768; stepSize: 512; value: root.contextLength; onValueChanged: root.contextLength = value; themeColor: Theme.primary; Layout.fillWidth: true }
         SettingsSlider { label: "Batch Size"; valueText: Number(root.batchSize).toString(); from: 128; to: 2048; stepSize: 128; value: root.batchSize; onValueChanged: root.batchSize = value; themeColor: Theme.primary; Layout.fillWidth: true }
     }
 

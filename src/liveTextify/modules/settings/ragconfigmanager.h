@@ -1,5 +1,7 @@
 #pragma once
-#include "liveTextify/modules/engines/common.h"
+
+#include <QObject>
+#include "liveTextify/types.h"
 
 class RAGConfigManager: public QObject{
     Q_OBJECT
@@ -15,15 +17,14 @@ public:
     explicit RAGConfigManager(QObject * parent = nullptr);
 
     // Getters
-    bool enabled()              const { return mConfig.enabled; }
-    int minChunkSize()          const { return mConfig.minChars; }
-    int maxChunkSize()          const { return mConfig.maxChars; }
-    int topKResults()           const { return mConfig.topK; }
-    int embeddingDimension()    const { return mConfig.dim; }
-    qreal minSimilarityScore()  const { return mConfig.minScore; }
-    qreal lengthBoostFactor()   const { return mConfig.lengthBoost; }
-    qreal fillerThreshold()     const { return mConfig.fillerLimit; }
-
+    int   minChunkSize()       const { return mConfig.chunking.minChunkLength; }
+    int   maxChunkSize()       const { return mConfig.chunking.maxChunkLength; }
+    int   topKResults()        const { return mConfig.search.topK; }
+    int   embeddingDimension() const { return mConfig.index.dim; }
+    qreal minSimilarityScore() const { return mConfig.search.minSimilarity; }
+    qreal lengthBoostFactor()  const { return mConfig.chunking.lengthBoostFactor; }
+    qreal fillerThreshold()    const { return mConfig.chunking.fillerWordLimit; }
+    bool enabled() const { return mEnabled; }
     // Setters
     void setEnabled(bool);
     void setMinChunkSize(int);
@@ -36,7 +37,7 @@ public:
 
 
     // State management
-    const RAGConfig& config() const { return mConfig; }
+    const RagConfig& config() const { return mConfig; }
     Q_INVOKABLE void resetToDefaults();
 
     void loadFromSettings();
@@ -50,7 +51,9 @@ signals:
     void minSimilarityScoreChanged();
     void lengthBoostFactorChanged();
     void fillerThresholdChanged();
+    void configChanged();
 private:
-    RAGConfig mConfig;
+    RagConfig mConfig;
+    bool mEnabled{};
 };
 

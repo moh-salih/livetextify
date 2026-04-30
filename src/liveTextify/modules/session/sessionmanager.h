@@ -1,41 +1,76 @@
+// sessionmanager.h
 #pragma once
 #include <QObject>
+#include <QtWhisper/Types.h>
+#include <QtLlama/Types.h>
+#include "liveTextify/core/AppError.h"
 
 class SessionService;
-class AiService;
-class AudioService;
-class RagService;
-class ConversationService;
-class QuestionService;
+class TranscriptionService;
+class ChatService;
 class DatabaseService;
 class SettingsManager;
 
 class SessionManager : public QObject {
     Q_OBJECT
-    Q_PROPERTY(SessionService      * sessions  READ sessionService      CONSTANT)
-    Q_PROPERTY(AiService           * ai        READ aiService           CONSTANT)
-    Q_PROPERTY(AudioService        * audio     READ audioService        CONSTANT)
-    Q_PROPERTY(RagService          * rag       READ ragService          CONSTANT)
-    Q_PROPERTY(ConversationService * chat      READ conversationService CONSTANT)
-    Q_PROPERTY(QuestionService     * questions READ questionService     CONSTANT)
+    Q_PROPERTY(SessionService* sessionService READ sessionService CONSTANT)
+    Q_PROPERTY(bool            isRecording    READ isRecording    NOTIFY isRecordingChanged)
+    Q_PROPERTY(int             whisperStatus  READ whisperStatus  NOTIFY whisperStatusChanged)
+    Q_PROPERTY(int             llamaStatus    READ llamaStatus    NOTIFY llamaStatusChanged)
+    Q_PROPERTY(int             embedderStatus READ embedderStatus NOTIFY embedderStatusChanged)
+    Q_PROPERTY(SessionStatus   sessionStatus  READ sessionStatus  NOTIFY sessionStatusChanged)
+    Q_PROPERTY(bool            hasError       READ hasError       NOTIFY lastErrorChanged)
+    Q_PROPERTY(int             lastError      READ lastError      NOTIFY lastErrorChanged)
+    Q_PROPERTY(QString         lastErrorString READ lastErrorString NOTIFY lastErrorChanged)
 
 public:
-    explicit SessionManager(SettingsManager * settings, QObject *parent = nullptr);
+    enum class SessionStatus { Idle, Recording, Paused };
+    Q_ENUM(SessionStatus)
+
+    explicit SessionManager(SettingsManager* settings, QObject* parent = nullptr);
     ~SessionManager();
 
-    SessionService      * sessionService()      const { return mSessionService; }
-    AiService           * aiService()           const { return mAiService; }
-    AudioService        * audioService()        const { return mAudioService; }
-    RagService          * ragService()          const { return mRagService; }
-    ConversationService * conversationService() const { return mConversationService; }
-    QuestionService     * questionService()     const { return mQuestionService; }
+    SessionService* sessionService() const { return mSessionService; }
+
+    bool          isRecording()     const { return mIsRecording; }
+    int           whisperStatus()   const { return static_cast<int>(mWhisperStatus); }
+    int           llamaStatus()     const { return static_cast<int>(mLlamaStatus); }
+    int           embedderStatus()  const { return static_cast<int>(mEmbedderStatus); }
+    SessionStatus sessionStatus()   const { return mSessionStatus; }
+    bool          hasError()        const { return mHasError; }
+    int           lastError()       const { return static_cast<int>(mLastError); }
+    QString       lastErrorString() const { return LiveTextify::appErrorToString(mLastError); }
+
+    Q_INVOKABLE void clearError();
+
+public slots:
+    void startRecording();
+    void stopRecording();
+    void toggleRecording();
+
+signals:
+    void isRecordingChanged();
+    void whisperStatusChanged();
+    void llamaStatusChanged();
+    void embedderStatusChanged();
+    void sessionStatusChanged();
+    void lastErrorChanged();
 
 private:
-    SessionService      * mSessionService;
-    AiService           * mAiService;
-    AudioService        * mAudioService;
-    RagService          * mRagService;
-    ConversationService * mConversationService;
-    QuestionService     * mQuestionService;
-    DatabaseService     * mDatabaseService;
+    void setSessionStatus(SessionStatus s);
+    void reportError(LiveTextify::AppError error);
+
+    DatabaseService*      mDatabaseService;
+    SessionService*       mSessionService;
+    TranscriptionService* mTranscriptionService;
+    ChatService*          mChatService;
+
+    bool              mIsRecording    = false;
+    QtWhisper::Status mWhisperStatus  = QtWhisper::Status::Idle;
+    QtLlama::Status   mLlamaStatus    = QtLlama::Status::Idle;
+    QtLlama::Status   mEmbedderStatus = QtLlama::Status::Idle;
+    SessionStatus     mSessionStatus  = SessionStatus::Idle;
+
+    bool                    mHasError  = false;
+    LiveTextify::AppError   mLastError = LiveTextify::AppError::SttInferenceFailed;
 };

@@ -11,36 +11,29 @@ Page {
     // --- State Properties ---
     property int currentTab: 0
 
+    readonly property var currentSubMgr: {
+        if (currentTab === 0) return AppState.llmModel
+        if (currentTab === 1) return AppState.sttModel
+        return AppState.embModel
+    }
+
+    readonly property var currentListModel: currentSubMgr ? currentSubMgr.models : null
+
+    function handleDownload(index)  { AppState.downloadModel(currentSubMgr, index) }
+    function handleCancel(url)      { AppState.cancelDownload(currentSubMgr, url) }
+    function handleActivate(index)  { AppState.selectModel(currentSubMgr, index) }
+    function handleDelete(url)      { AppState.deleteModel(currentSubMgr, url) }
+
     // --- Controller Actions ---
     function handleTabClicked(index) {
         root.currentTab = index
     }
 
-    function getActiveManager() {
-        if (root.currentTab === 0) return AppState.llama
-        if (root.currentTab === 1) return AppState.whisper
-        return AppState.embedding
-    }
-
-    function handleDownload(index) {
-        root.getActiveManager().downloadModel(index)
-    }
-
-    function handleCancel(url) {
-        root.getActiveManager().cancelDownload(url)
-    }
-
-    function handleActivate(index) {
-        root.getActiveManager().selectDefaultModel(index)
-    }
-
-    function handleDelete(url) {
-        root.getActiveManager().deleteModel(url)
-    }
     // -------------------------
 
-    background: Rectangle {
-        color: Theme.background
+    background: Components.PageBackground {
+        topColor: Theme.background
+        bottomColor: Theme.background
     }
 
     ScrollView {
@@ -54,25 +47,10 @@ Page {
             y: 40
             spacing: 40
 
-            ColumnLayout {
+            Components.PageHeader {
                 Layout.fillWidth: true
-                spacing: 8
-
-                Text {
-                    text: "Model Library"
-                    font.family: Fonts.headlineFamily
-                    font.pixelSize: Fonts.displaySmall
-                    font.bold: true
-                    color: Theme.textOnSurface
-                }
-                Text {
-                    text: "Download and manage local AI models. One click. Fully offline."
-                    font.family: Fonts.bodyFamily
-                    font.pixelSize: Fonts.title
-                    color: Theme.textOnSurfaceVariant
-                    Layout.maximumWidth: 800
-                    wrapMode: Text.WordWrap
-                }
+                title: "Model Library"
+                description: "Download and manage local AI models. One click. Fully offline."
             }
 
             GridLayout {
@@ -80,21 +58,6 @@ Page {
                 columns: root.width > 900 ? 12 : 1
                 rowSpacing: 24
                 columnSpacing: 24
-
-                // The Below will be removed
-                // Components.SystemStatusBento {
-                //     Layout.columnSpan: root.width > 900 ? 8 : 1
-                //     Layout.fillWidth: true
-                //     Layout.fillHeight: true
-                //     Layout.minimumHeight: 280
-                // }
-
-                // Components.StorageStatsBento {
-                //     Layout.columnSpan: root.width > 900 ? 4 : 1
-                //     Layout.fillWidth: true
-                //     Layout.fillHeight: true
-                //     Layout.minimumHeight: 280
-                // }
             }
 
             Components.ModelTypeTabs {
@@ -105,7 +68,7 @@ Page {
 
             Components.ModelListGrid {
                 Layout.fillWidth: true
-                modelList: root.getActiveManager().listModel
+                modelList: root.currentListModel
 
                 onDownloadModel: (index) => root.handleDownload(index)
                 onCancelDownload: (url) => root.handleCancel(url)

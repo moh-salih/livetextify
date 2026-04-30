@@ -1,4 +1,3 @@
-// C:\Users\salih\code\staj\livetextify\src\livetextify\modules\database\transcriptionrepository.h
 #pragma once
 #include <QObject>
 #include <QString>

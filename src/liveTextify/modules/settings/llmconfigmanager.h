@@ -1,6 +1,7 @@
 #pragma once
 #include <QObject>
-#include "liveTextify/modules/engines/common.h"
+#include "liveTextify/types.h"
+
 
 class LLMConfigManager : public QObject{
     Q_OBJECT
@@ -19,7 +20,7 @@ public:
 
 
     // Getters
-    QString systemPrompt()      const { return mConfig.systemPrompt; };
+    QString systemPrompt()      const { return mSystemPrompt; };
     int     threadCount()       const { return mConfig.threadCount; }
     int     contextLength()     const { return mConfig.contextLength; }
     int     batchSize()         const { return mConfig.batchSize; }
@@ -29,6 +30,7 @@ public:
     qreal   temperature()       const { return mConfig.temperature; }
     qreal   topP()              const { return mConfig.topP; }
     qreal   repeatPenalty()     const { return mConfig.repeatPenalty; }
+    QString modelPath()         const { return mConfig.modelPath; }
 
 
     // Setters
@@ -42,7 +44,7 @@ public:
     void setTemperature(qreal);
     void setTopP(qreal);
     void setRepeatPenalty(qreal);
-
+    void setModelPath(const QString& v);
 
     // state management
     const LLMConfig& config() const { return mConfig; }
@@ -60,8 +62,10 @@ signals:
     void temperatureChanged();
     void topPChanged();
     void repeatPenaltyChanged();
+    void configChanged();
 private:
     LLMConfig mConfig;
+    QString mSystemPrompt;
 };
 
 

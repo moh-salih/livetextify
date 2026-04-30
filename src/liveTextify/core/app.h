@@ -9,7 +9,6 @@
 class SettingsManager;
 class ResourceManager;
 class PlatformManager;
-
 class SessionManager;
 class ModelManager;
 
@@ -36,9 +35,6 @@ private:
     SettingsManager       * mSettingsManager    = nullptr;
     ResourceManager       * mResourceManager    = nullptr;
     PlatformManager       * mPlatformManager    = nullptr;
-
     SessionManager        * mSessionManager     = nullptr;
-    ModelManager          * mWhisperManager     = nullptr;
-    ModelManager          * mLLamaManager       = nullptr;
-    ModelManager          * mEmbeddingManager   = nullptr;
+    ModelManager          * mModelManager       = nullptr;
 };

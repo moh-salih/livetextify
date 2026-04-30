@@ -4,7 +4,7 @@
 #include "liveTextify/modules/database/repositories/messagerepository.h"
 #include "liveTextify/modules/database/repositories/transcriptionrepository.h"
 #include "liveTextify/modules/database/repositories/chunkrepository.h"
-#include "liveTextify/modules/session/session.h"
+#include "liveTextify/modules/session/SessionRecord.h"
 
 DatabaseService::DatabaseService(QObject* parent): QObject(parent){
     auto* db = DatabaseManager::instance();

@@ -22,7 +22,7 @@ Page {
         // Connect UI actions directly to the C++ settings manager methods
         onDiscardClicked: {
             console.log("Discarding local changes, reloading from backend.")
-            AppState.settingsMgr.reload();
+            AppState.settingsMgr.discard();
         }
         onSyncClicked: {
             console.log("Syncing preferences to backend.")

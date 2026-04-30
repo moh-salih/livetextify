@@ -23,11 +23,9 @@ Page {
         Navigator.goToLiveSession("Session Review")
     }
 
-    background: Rectangle {
-        gradient: Gradient {
-            GradientStop { position: 0.0; color: Theme.surfaceContainerHighest }
-            GradientStop { position: 1.0; color: Theme.background }
-        }
+    background: Components.PageBackground {
+        topColor: Theme.surfaceContainerHighest
+        bottomColor: Theme.background
     }
 
     ScrollView {
@@ -41,15 +39,11 @@ Page {
             y: 32
             spacing: 40
 
-            RowLayout {
+            Components.PageHeader {
                 Layout.fillWidth: true
-                Text {
-                    text: "Live Sessions"
-                    font.family: Fonts.headlineFamily
-                    font.pixelSize: Fonts.largeTitle
-                    font.bold: true
-                    color: Theme.primary
-                }
+                title: "Live Sessions"
+                titleColor: Theme.primary
+                titleSize: Fonts.largeTitle
             }
 
             Components.ActiveSessionCard {
@@ -73,7 +67,7 @@ Page {
             Components.LoadingIndicator {
                 Layout.fillWidth: true
                 visible: root.deferredSessionModel === null
-                text: "Loading history..."
+                titleText: "Loading history..."
             }
 
             Components.HistoricalSessionsGrid {

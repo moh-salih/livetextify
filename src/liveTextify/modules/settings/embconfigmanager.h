@@ -1,6 +1,7 @@
 #pragma once
-#include "liveTextify/modules/engines/common.h"
+
 #include <QObject>
+#include "liveTextify/types.h"
 
 class EmbConfigManager: public QObject{
     Q_OBJECT
@@ -15,11 +16,12 @@ public:
     // Getters
     int threadCount()    const {   return mConfig.nThreads; }
     int contextLength()  const { return mConfig.nCtx; }
+    QString modelPath()  const { return mConfig.modelPath; }
 
     // Setters
     void setThreadCount(int);
     void setContextLength(int);
-
+    void setModelPath(const QString& v);
 
 
     // State management
@@ -31,6 +33,8 @@ public:
 signals:
     void threadCountChanged();
     void contextLengthChanged();
+    void configChanged();
+
 private:
     EmbConfig mConfig;
 };

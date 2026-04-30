@@ -1,30 +1,23 @@
 cmake_minimum_required(VERSION 3.16)
 project("LiveTextify: Voice to Text to Insight" VERSION 1.0.0 LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 23)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
 
 # Build Options
 option(BUILD_TESTING "Build Unit Tests" OFF)
 
 # Standard Qt Setup
-find_package(Qt6 REQUIRED COMPONENTS Quick Multimedia Network Test QuickControls2 Sql Gui)
-find_package(spdlog REQUIRED)
-find_package(whisper REQUIRED)
-find_package(llama REQUIRED)
-find_package(hnswlib CONFIG REQUIRED)
-find_package(nlohmann_json CONFIG REQUIRED)
-
-
+find_package(Qt6 REQUIRED COMPONENTS Core)
 qt_standard_project_setup(REQUIRES 6.8)
 
 
 # Define the executable first
-qt_add_executable(liveTextify src/main.cpp
-    .github/workflows/release.yml)
+qt_add_executable(liveTextify src/main.cpp)
 
 # Add subdirectories
+add_subdirectory(third_party/QtWhisper)
+add_subdirectory(third_party/QtLlama)
+add_subdirectory(third_party/QtAudioCapture)
+add_subdirectory(third_party/QtRag)
 add_subdirectory(src)
 add_subdirectory(qml)
 
@@ -44,33 +37,78 @@ endif()
 target_link_libraries(liveTextify PRIVATE liveTextifyBackend liveTextifyFrontendplugin)
 qt_import_qml_plugins(liveTextify)
 
+# ==============================================================================
+# PLATFORM-SPECIFIC CONFIGURATION
+# ==============================================================================
 
-# Platform specific properties
-set_target_properties(liveTextify PROPERTIES
-    MACOSX_BUNDLE_GUI_IDENTIFIER "com.salih.livetextify"
-    MACOSX_BUNDLE TRUE
-    WIN32_EXECUTABLE TRUE
+# --- Base properties (all platforms) ---
+set(liveTextify_PROPERTIES
+    WIN32_EXECUTABLE                    TRUE
+    AUTOMOC                             ON
+    CXX_STANDARD                        23
+    CXX_STANDARD_REQUIRED               ON
 )
 
-
-if(ANDROID)
-    set_target_properties(liveTextify
-        PROPERTIES
-        QT_ANDROID_APP_NAME "LiveTextify: Voice to Text to Insight"
-        QT_ANDROID_PACKAGE_NAME "com.salih.livetextify"
-        QT_ANDROID_PACKAGE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/android
+# --- macOS Desktop ---
+if(APPLE AND NOT IOS)
+    list(APPEND liveTextify_PROPERTIES
+        MACOSX_BUNDLE                       TRUE
+        MACOSX_BUNDLE_BUNDLE_NAME           "LiveTextify"
+        MACOSX_BUNDLE_GUI_IDENTIFIER        "com.salih.livetextify"
+        MACOSX_BUNDLE_BUNDLE_VERSION        "${PROJECT_VERSION}"
+        MACOSX_BUNDLE_SHORT_VERSION_STRING  "${PROJECT_VERSION}"
+        MACOSX_BUNDLE_INFO_PLIST            "${CMAKE_CURRENT_SOURCE_DIR}/platform/macos/Info.plist.in"
     )
 
-    qt_add_android_permission(liveTextify   NAME android.permission.RECORD_AUDIO)
-    # qt_add_android_permission(liveTextify NAME android.permission.READ_EXTERNAL_STORAGE)
-    # qt_add_android_permission(liveTextify NAME android.permission.WRITE_EXTERNAL_STORAGE)
-    # qt_add_android_permission(liveTextify NAME android.permission.MANAGE_EXTERNAL_STORAGE)
-    qt_add_android_permission(liveTextify   NAME android.permission.INTERNET)
+    if(NOT DEFINED CMAKE_OSX_DEPLOYMENT_TARGET)
+        set(CMAKE_OSX_DEPLOYMENT_TARGET "13.0" CACHE STRING "Minimum macOS version")
+    endif()
 
-    # Openssl support
+    # Optional: Add code signing entitlements if file exists
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/platform/macos/entitlements.plist")
+        list(APPEND liveTextify_PROPERTIES
+            XCODE_ATTRIBUTE_CODE_SIGN_ENTITLEMENTS "${CMAKE_CURRENT_SOURCE_DIR}/platform/macos/entitlements.plist"
+        )
+    endif()
+endif()
+
+# --- iOS ---
+if(IOS)
+    list(APPEND liveTextify_PROPERTIES
+        MACOSX_BUNDLE                       TRUE
+        MACOSX_BUNDLE_BUNDLE_NAME           "LiveTextify"
+        MACOSX_BUNDLE_GUI_IDENTIFIER        "com.salih.livetextify"
+        MACOSX_BUNDLE_BUNDLE_VERSION        "${PROJECT_VERSION}"
+        MACOSX_BUNDLE_SHORT_VERSION_STRING  "${PROJECT_VERSION}"
+        MACOSX_BUNDLE_INFO_PLIST            "${CMAKE_CURRENT_SOURCE_DIR}/platform/macos/Info.plist.in"
+    )
+
+    if(NOT DEFINED CMAKE_OSX_DEPLOYMENT_TARGET)
+        set(CMAKE_OSX_DEPLOYMENT_TARGET "15.0" CACHE STRING "Minimum iOS version")
+    endif()
+endif()
+
+# --- Android ---
+if(ANDROID)
+    list(APPEND liveTextify_PROPERTIES
+        QT_ANDROID_APP_NAME             "LiveTextify: Voice to Text to Insight"
+        QT_ANDROID_PACKAGE_NAME         "com.salih.livetextify"
+        QT_ANDROID_PACKAGE_SOURCE_DIR   "${CMAKE_CURRENT_SOURCE_DIR}/platform/android"
+    )
+
+    # Add permissions
+    qt_add_android_permission(liveTextify NAME android.permission.RECORD_AUDIO)
+    qt_add_android_permission(liveTextify NAME android.permission.INTERNET)
+
+    # OpenSSL support
     include("$ENV{ANDROID_SDK_ROOT}/android_openssl/android_openssl.cmake")
     add_android_openssl_libraries(liveTextify)
 endif()
+
+# --- Apply all properties at once ---
+set_target_properties(liveTextify PROPERTIES ${liveTextify_PROPERTIES})
+
+
 
 
 
@@ -85,7 +123,7 @@ install(TARGETS liveTextify
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
-# Deploy Qt runtime dependencies (Qt 6.5+ built-in)
+# Deploy Qt runtime dependencies
 qt_generate_deploy_qml_app_script(
     TARGET liveTextify
     OUTPUT_SCRIPT deploy_script
@@ -94,9 +132,6 @@ qt_generate_deploy_qml_app_script(
     DEPLOY_USER_QML_MODULES_ON_UNSUPPORTED_PLATFORM
 )
 install(SCRIPT ${deploy_script})
-
-# Install whisper model data directory if it ships any (optional)
-# install(DIRECTORY ${CMAKE_SOURCE_DIR}/models/ DESTINATION ${CMAKE_INSTALL_DATADIR}/livetextify/models)
 
 # Install desktop entry and icon for Linux
 if(UNIX AND NOT APPLE AND NOT ANDROID)

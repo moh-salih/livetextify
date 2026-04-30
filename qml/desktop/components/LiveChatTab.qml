@@ -9,9 +9,11 @@ Rectangle {
 
     // --- Pure UI Properties ---
     property var chatModel: null
+    property bool isGenerating: false
 
     // --- Pure UI Signals ---
     signal sendMessage(string text)
+    signal stopGeneration()
 
     Layout.fillWidth: true
     Layout.fillHeight: true
@@ -65,6 +67,10 @@ Rectangle {
 
                 onAccepted: {
                     if (text.trim() === "") return
+
+                    if (root.isGenerating) {
+                        root.stopGeneration()
+                    }
                     root.sendMessage(text.trim())
                     text = ""
                 }
@@ -80,7 +86,7 @@ Rectangle {
                 anchors.verticalCenter: parent.verticalCenter
 
                 Text {
-                    text: "send"
+                    text: root.isGenerating ? "stop" : "send"
                     font.family: Fonts.iconFamily
                     font.pixelSize: 18
                     color: Theme.textOnPrimary
@@ -93,9 +99,13 @@ Rectangle {
                     onPressed: parent.scale = 0.95
                     onReleased: parent.scale = 1.0
                     onClicked: {
-                        if (chatInput.text.trim() === "") return
-                        root.sendMessage(chatInput.text.trim())
-                        chatInput.text = ""
+                        if (root.isGenerating) {
+                            root.stopGeneration()
+                        } else {
+                            if (chatInput.text.trim() === "") return
+                            root.sendMessage(chatInput.text.trim())
+                            chatInput.text = ""
+                        }
                     }
                 }
 
@@ -134,9 +144,8 @@ Rectangle {
             Rectangle {
                 id: bubble
                 Layout.alignment: msgRoot.isUser ? Qt.AlignRight : Qt.AlignLeft
-                Layout.maximumWidth: msgRoot.width * 0.85 // Safely cap the width to 85% of the chat area
+                Layout.maximumWidth: msgRoot.width * 0.85
 
-                // Shrink-wrap magic: calculate implicit size based on the text + margins
                 implicitWidth: Math.max(40, contentCol.implicitWidth + 40)
                 implicitHeight: contentCol.implicitHeight + 32
 
@@ -155,7 +164,7 @@ Rectangle {
                 ColumnLayout {
                     id: contentCol
                     anchors.centerIn: parent
-                    width: parent.width - 40 // Force internal items to fit inside the bubble with 20px padding on each side
+                    width: parent.width - 40
                     spacing: 8
 
                     Text {

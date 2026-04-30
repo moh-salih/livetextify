@@ -1,4 +1,3 @@
-// C:\Users\salih\code\staj\livetextify\src\livetextify\modules\database\messagerepository.h
 #ifndef MESSAGEREPOSITORY_H
 #define MESSAGEREPOSITORY_H
 

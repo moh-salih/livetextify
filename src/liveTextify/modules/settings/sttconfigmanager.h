@@ -1,6 +1,6 @@
 #pragma once
 #include <QObject>
-#include "liveTextify/modules/engines/common.h"
+#include "liveTextify/types.h"
 
 class STTConfigManager: public QObject{
     Q_OBJECT
@@ -23,6 +23,7 @@ public:
     void setTemperature(qreal);
     void setTranslate(bool);
     void setAutoDetectLanguage(bool);
+    void setModelPath(const QString& v);
 
     // Getters
     int     maxTokens()             const { return mConfig.maxTokens; }
@@ -32,8 +33,10 @@ public:
     qreal   temperature()           const { return mConfig.temperature; }
     bool    translate()             const { return mConfig.translate; }
     bool    autoDetectLanguage()    const { return mConfig.autoDetectLanguage; }
+    QString modelPath()             const { return mConfig.modelPath; }
+
     // for internal use
-    const STTConfig& config() const { return mConfig; }
+    const SttConfig& config() const { return mConfig; }
     // Reset to defaults (useful for UI "Reset to Defaults" button)
     Q_INVOKABLE void resetToDefaults();
 
@@ -51,7 +54,8 @@ signals:
     void temperatureChanged();
     void translateChanged();
     void autoDetectLanguageChanged();
+    void configChanged();
 private:
-    STTConfig mConfig;
+    SttConfig mConfig;
 };
 

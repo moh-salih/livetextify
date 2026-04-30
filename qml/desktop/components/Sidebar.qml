@@ -11,6 +11,10 @@ Rectangle {
     // Automatically switch to compact mode on small screens or in Clear Mode
     property bool isCompact: Theme.isClearMode || (Window.window ? Window.window.width < 900 : false)
 
+    // Abstracted Routing State
+    property string currentRoute: "Dashboard"
+    signal navigateRequested(string route)
+
     // Use implicitWidth instead of width so parent Layouts reclaim the space
     implicitWidth: isCompact ? 80 : 256
     color: Theme.surfaceContainerLow
@@ -86,26 +90,26 @@ Rectangle {
             NavButton {
                 icon: "dashboard"
                 text: "Dashboard"
-                isActive: Navigator.currentTitle === "Dashboard"
-                onClicked: Navigator.goToDashboard()
+                isActive: root.currentRoute === "Dashboard"
+                onClicked: root.navigateRequested("Dashboard")
             }
             NavButton {
                 icon: "mic_none"
                 text: "Sessions"
-                isActive: Navigator.currentTitle === "Sessions"
-                onClicked: Navigator.goToSessions()
+                isActive: root.currentRoute === "Sessions"
+                onClicked: root.navigateRequested("Sessions")
             }
             NavButton {
                 icon: "layers"
                 text: "Model Library"
-                isActive: Navigator.currentTitle === "Model Library"
-                onClicked: Navigator.goToModelLibrary()
+                isActive: root.currentRoute === "Model Library"
+                onClicked: root.navigateRequested("Model Library")
             }
             NavButton {
                 icon: "settings"
                 text: "Settings"
-                isActive: Navigator.currentTitle === "Settings"
-                onClicked: Navigator.goToSettings()
+                isActive: root.currentRoute === "Settings"
+                onClicked: root.navigateRequested("Settings")
             }
         }
 
@@ -123,11 +127,9 @@ Rectangle {
         Layout.fillWidth: true
         Layout.preferredHeight: 48
 
-        // FIX: Pure declarative binding using ternary logic
         color: isActive ? Theme.surfaceContainerHighest : (hoverArea.containsMouse ? Qt.rgba(Theme.surfaceContainerHighest.r, Theme.surfaceContainerHighest.g, Theme.surfaceContainerHighest.b, 0.5) : "transparent")
         radius: 12
 
-        // Helpful tooltip exclusively for the icon-only mode
         ToolTip.text: btn.text
         ToolTip.visible: hoverArea.containsMouse && root.isCompact
         ToolTip.delay: 400
@@ -153,7 +155,6 @@ Rectangle {
                 color: isActive ? Theme.primary : Theme.textOnSurface
                 opacity: isActive ? 1.0 : 0.6
 
-                // Automatically center the icon when in compact mode
                 Layout.alignment: root.isCompact ? Qt.AlignHCenter : Qt.AlignLeft
                 Layout.fillWidth: root.isCompact
                 horizontalAlignment: Text.AlignHCenter

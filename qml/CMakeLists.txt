@@ -1,3 +1,5 @@
+find_package(Qt6 REQUIRED COMPONENTS Quick)
+
 qt_add_library(liveTextifyFrontend STATIC)
 
 # Platform detection
@@ -22,4 +24,5 @@ qt_add_qml_module(liveTextifyFrontend
     VERSION 1.0
     QML_FILES
         ${PLATFORM_QML_FILES}
+        QML_FILES desktop/components/UnifiedSessionHeader.qml
 )

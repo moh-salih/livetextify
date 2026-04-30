@@ -1,36 +1,31 @@
-#include "liveTextify/modules/session/session.h"
+// session.cpp
+#include "session.h"
 #include "liveTextify/modules/chat/conversation.h"
-#include "liveTextify/core/Logger.h"
 
+Session::Session(QObject* parent) : QObject(parent) {}
 
-
-Session::Session(QObject *parent)
-    : QObject(parent)
-    , mConversation(new Conversation(this))
-{
-    // Connect config changes to titleChanged for QML bindings
-    connect(this, &Session::configChanged, this, [this]() {
-        emit titleChanged();
-    });
-
+void Session::setConfig(const SessionConfig& cfg) {
+    mConfig = cfg;
+}
+void Session::loadConversation(const QVector<Message>& messages) {
+    if (!mConversation)
+        mConversation = new Conversation(this);
+    mConversation->clear();
+    for (const auto& msg : messages)
+        mConversation->addMessage(msg);
+    emit conversationLoaded();
 }
 
-Session::~Session() = default;
-
-void Session::setTranscription(const QString& t) {
-    if (mTranscription != t) {
-        int prevLength = mTranscription.length();
-        int newLength = t.length();
-
-        Logger::debug(QString("Transcription updated: %1 → %2 chars (+%3)").arg(prevLength).arg(newLength).arg(newLength - prevLength));
-
-        mTranscription = t;
-        emit transcriptionChanged();
-    }
+void Session::unloadConversation() {
+    delete mConversation;
+    mConversation = nullptr;
 }
 
-void Session::sendMessage(const QString& text){
-    Message msg("user", text);
-    mConversation->addMessage(msg);
-    emit userMessageReady(text, sessionID());
+void Session::loadTranscription(const QString& text) {
+    mTranscription = text;
+    emit transcriptionChanged();
+}
+
+void Session::unloadTranscription() {
+    mTranscription.clear();
 }

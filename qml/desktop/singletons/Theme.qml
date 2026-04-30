@@ -32,6 +32,8 @@ QtObject {
     readonly property color outline: "#6d758c"
     readonly property color outlineVariant: "#40485d"
 
+    readonly property color errorColor: "#ff716c"
+
     // Gradients
     readonly property Gradient primaryGradient: Gradient {
         orientation: Gradient.Horizontal
