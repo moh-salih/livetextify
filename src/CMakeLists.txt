@@ -14,28 +14,28 @@ include(FetchContent)
 FetchContent_Declare(
     QtWhisper
     GIT_REPOSITORY https://github.com/moh-salih/QtWhisper.git
-    GIT_TAG        main
+    GIT_TAG        dev
     GIT_SHALLOW    TRUE
 )
 
 FetchContent_Declare(
     QtLlama
     GIT_REPOSITORY https://github.com/moh-salih/QtLlama.git
-    GIT_TAG        main
+    GIT_TAG        dev
     GIT_SHALLOW    TRUE
 )
 
 FetchContent_Declare(
     QtAudioCapture
     GIT_REPOSITORY https://github.com/moh-salih/QtAudioCapture.git
-    GIT_TAG        main
+    GIT_TAG        dev
     GIT_SHALLOW    TRUE
 )
 
 FetchContent_Declare(
     QtRag
     GIT_REPOSITORY https://github.com/moh-salih/QtRag.git
-    GIT_TAG        main
+    GIT_TAG        dev
     GIT_SHALLOW    TRUE
 )
 
