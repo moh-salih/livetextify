@@ -19,3 +19,4 @@ android/gradle/wrapper/gradle-wrapper.jar
 android/gradlew
 android/gradlew.bat
 android/res/values/libs.xml
+"third_party/" 

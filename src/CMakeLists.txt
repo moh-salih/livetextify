@@ -9,37 +9,37 @@ file(GLOB_RECURSE liveTextifyBackend_SOURCES "liveTextify/*.cpp" "liveTextify/*.
 qt_add_library(liveTextifyBackend STATIC ${liveTextifyBackend_SOURCES} )
 
 
-# include(FetchContent)
+include(FetchContent)
 
-# FetchContent_Declare(
-#     QtWhisper
-#     GIT_REPOSITORY https://github.com/moh-salih/QtWhisper.git
-#     GIT_TAG        main
-#     GIT_SHALLOW    TRUE
-# )
+FetchContent_Declare(
+    QtWhisper
+    GIT_REPOSITORY https://github.com/moh-salih/QtWhisper.git
+    GIT_TAG        main
+    GIT_SHALLOW    TRUE
+)
 
-# FetchContent_Declare(
-#     QtLlama
-#     GIT_REPOSITORY https://github.com/moh-salih/QtLlama.git
-#     GIT_TAG        main
-#     GIT_SHALLOW    TRUE
-# )
+FetchContent_Declare(
+    QtLlama
+    GIT_REPOSITORY https://github.com/moh-salih/QtLlama.git
+    GIT_TAG        main
+    GIT_SHALLOW    TRUE
+)
 
-# FetchContent_Declare(
-#     QtAudioCapture
-#     GIT_REPOSITORY https://github.com/moh-salih/QtAudioCapture.git
-#     GIT_TAG        main
-#     GIT_SHALLOW    TRUE
-# )
+FetchContent_Declare(
+    QtAudioCapture
+    GIT_REPOSITORY https://github.com/moh-salih/QtAudioCapture.git
+    GIT_TAG        main
+    GIT_SHALLOW    TRUE
+)
 
-# FetchContent_Declare(
-#     QtRag
-#     GIT_REPOSITORY https://github.com/moh-salih/QtRag.git
-#     GIT_TAG        main
-#     GIT_SHALLOW    TRUE
-# )
+FetchContent_Declare(
+    QtRag
+    GIT_REPOSITORY https://github.com/moh-salih/QtRag.git
+    GIT_TAG        main
+    GIT_SHALLOW    TRUE
+)
 
-# FetchContent_MakeAvailable(QtWhisper QtLlama QtAudioCapture QtRag)
+FetchContent_MakeAvailable(QtWhisper QtLlama QtAudioCapture QtRag)
 
 
 target_link_libraries(liveTextifyBackend PUBLIC

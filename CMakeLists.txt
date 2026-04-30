@@ -14,10 +14,6 @@ qt_standard_project_setup(REQUIRES 6.8)
 qt_add_executable(liveTextify src/main.cpp)
 
 # Add subdirectories
-add_subdirectory(third_party/QtWhisper)
-add_subdirectory(third_party/QtLlama)
-add_subdirectory(third_party/QtAudioCapture)
-add_subdirectory(third_party/QtRag)
 add_subdirectory(src)
 add_subdirectory(qml)
 
