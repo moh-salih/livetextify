@@ -99,7 +99,6 @@ ApplicationWindow {
     // Global Error Reporting UI
     Components.MessageDialog {
         id: globalErrorDialog
-
         // Data flows downwards (Rules 4 & 5)
         dialogType: Components.MessageDialog.Error
         title: "System Error"
@@ -115,6 +114,15 @@ ApplicationWindow {
             // Failsafe: in case it was closed via ESC key or clicking outside
             if (AppState.hasError) {
                 AppState.clearError()
+            }
+        }
+    }
+
+    Connections{
+        target: SessionManager
+        function onLastErrorChanged(){
+            if(AppState.hasError){
+                globalErrorDialog.open()
             }
         }
     }

@@ -42,8 +42,7 @@ TranscriptionService::TranscriptionService(QObject* parent)
 void TranscriptionService::onActiveSessionConfigChanged(const SessionConfig& config) {
     mWhisper->setConfig(config.stt);
     mAudioPipeline->setConfig(config.audio);
-    // No loadModel() call here — Engine::setConfig handles reload
-    // automatically via autoReload flag
+    mWhisper->reloadModel();
 }
 
 TranscriptionService::~TranscriptionService() = default;
@@ -69,8 +68,7 @@ void TranscriptionService::onActiveSessionChanged(Session* activeSession) {
         unloadModels();
         return;
     }
-    Logger::info("[TranscriptionService] active session changed, model: "
-                 + activeSession->config().stt.modelPath);
+    Logger::info("[TranscriptionService] active session changed, model: " + activeSession->config().stt.modelPath);
     loadModels(activeSession);
 }
 

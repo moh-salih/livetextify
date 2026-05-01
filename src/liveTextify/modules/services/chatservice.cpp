@@ -135,13 +135,16 @@ void ChatService::onActiveSessionChanged(Session* activeSession) {
 void ChatService::onActiveSessionConfigChanged(const SessionConfig& config) {
     m_llama->setConfig(config.llm);
     m_embedder->setConfig(config.emb);
-    // Again no loadModel() — autoReload handles it
+    m_llama->reloadModel();
+    m_embedder->reloadModel();
 }
 
 void ChatService::loadModels(Session* activeSession) {
     const auto& config = activeSession->config();
     m_llama->setConfig(config.llm);     // triggers loadModel() inside engine
     m_embedder->setConfig(config.emb);  // same
+    m_llama->reloadModel();
+    m_embedder->reloadModel();
 }
 
 void ChatService::unloadModels() {

@@ -77,4 +77,6 @@ QtObject {
 
     // ── Error Management ──────────────────────────────────────────────────────
     function clearError()                 { SessionManager.clearError() }
+
+
 }
