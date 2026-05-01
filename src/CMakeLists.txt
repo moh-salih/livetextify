@@ -1,4 +1,4 @@
-find_package(Qt6 REQUIRED COMPONENTS Quick Multimedia Network QuickControls2 Sql Gui)
+find_package(Qt6 REQUIRED COMPONENTS Quick Qml Multimedia Network QuickControls2 Sql Gui)
 
 find_package(spdlog REQUIRED)
 find_package(hnswlib CONFIG REQUIRED)
@@ -6,44 +6,11 @@ find_package(nlohmann_json CONFIG REQUIRED)
 
 file(GLOB_RECURSE liveTextifyBackend_SOURCES "liveTextify/*.cpp" "liveTextify/*.h")
 
-qt_add_library(liveTextifyBackend STATIC ${liveTextifyBackend_SOURCES} )
-
-
-include(FetchContent)
-
-FetchContent_Declare(
-    QtWhisper
-    GIT_REPOSITORY https://github.com/moh-salih/QtWhisper.git
-    GIT_TAG        main
-    GIT_SHALLOW    TRUE
-)
-
-FetchContent_Declare(
-    QtLlama
-    GIT_REPOSITORY https://github.com/moh-salih/QtLlama.git
-    GIT_TAG        main
-    GIT_SHALLOW    TRUE
-)
-
-FetchContent_Declare(
-    QtAudioCapture
-    GIT_REPOSITORY https://github.com/moh-salih/QtAudioCapture.git
-    GIT_TAG        main
-    GIT_SHALLOW    TRUE
-)
-
-FetchContent_Declare(
-    QtRag
-    GIT_REPOSITORY https://github.com/moh-salih/QtRag.git
-    GIT_TAG        main
-    GIT_SHALLOW    TRUE
-)
-
-FetchContent_MakeAvailable(QtWhisper QtLlama QtAudioCapture QtRag)
+qt_add_library(liveTextifyBackend STATIC ${liveTextifyBackend_SOURCES})
 
 
 target_link_libraries(liveTextifyBackend PUBLIC
-    Qt6::Quick Qt6::Multimedia Qt6::Network Qt6::QuickControls2 Qt6::Sql Qt6::Gui
+    Qt6::Quick Qt6::Multimedia Qt6::Network Qt6::QuickControls2 Qt6::Sql Qt6::Gui Qt6::Qml
     spdlog::spdlog
     QtWhisper::QtWhisper
     QtLlama::QtLlama

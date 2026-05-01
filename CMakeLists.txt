@@ -6,8 +6,41 @@ project("LiveTextify: Voice to Text to Insight" VERSION 1.0.0 LANGUAGES CXX)
 option(BUILD_TESTING "Build Unit Tests" OFF)
 
 # Standard Qt Setup
-find_package(Qt6 REQUIRED COMPONENTS Core)
+find_package(Qt6 REQUIRED COMPONENTS Core Qml Quick QuickControls2)
 qt_standard_project_setup(REQUIRES 6.8)
+
+# Dependencies
+include(FetchContent)
+
+FetchContent_Declare(
+    QtWhisper
+    GIT_REPOSITORY https://github.com/moh-salih/QtWhisper.git
+    GIT_TAG        main
+    GIT_SHALLOW    TRUE
+)
+
+FetchContent_Declare(
+    QtLlama
+    GIT_REPOSITORY https://github.com/moh-salih/QtLlama.git
+    GIT_TAG        main
+    GIT_SHALLOW    TRUE
+)
+
+FetchContent_Declare(
+    QtAudioCapture
+    GIT_REPOSITORY https://github.com/moh-salih/QtAudioCapture.git
+    GIT_TAG        main
+    GIT_SHALLOW    TRUE
+)
+
+FetchContent_Declare(
+    QtRag
+    GIT_REPOSITORY https://github.com/moh-salih/QtRag.git
+    GIT_TAG        main
+    GIT_SHALLOW    TRUE
+)
+
+FetchContent_MakeAvailable(QtWhisper QtLlama QtAudioCapture QtRag)
 
 
 # Define the executable first
@@ -30,7 +63,7 @@ if(BUILD_TESTING)
 endif()
 
 # Link dependencies of the application
-target_link_libraries(liveTextify PRIVATE liveTextifyBackend liveTextifyFrontendplugin)
+target_link_libraries(liveTextify PRIVATE liveTextifyBackend liveTextifyFrontend liveTextifyFrontendplugin)
 qt_import_qml_plugins(liveTextify)
 
 # ==============================================================================
