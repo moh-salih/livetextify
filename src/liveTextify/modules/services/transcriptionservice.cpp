@@ -74,11 +74,11 @@ void TranscriptionService::onActiveSessionChanged(Session* activeSession) {
     loadModels(activeSession);
 }
 
+
 void TranscriptionService::loadModels(Session* activeSession) {
     const auto& config = activeSession->config();
     mWhisper->setConfig(config.stt);
     mAudioPipeline->setConfig(config.audio);
-    mWhisper->loadModel();
 }
 
 void TranscriptionService::unloadModels() {
