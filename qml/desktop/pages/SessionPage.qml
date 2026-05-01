@@ -64,12 +64,6 @@ Page {
                 visible: false
             }
 
-            Components.LoadingIndicator {
-                Layout.fillWidth: true
-                visible: root.deferredSessionModel === null
-                titleText: "Loading history..."
-            }
-
             Components.HistoricalSessionsGrid {
                 Layout.fillWidth: true
                 visible: root.deferredSessionModel !== null
@@ -80,5 +74,10 @@ Page {
 
             Item { Layout.preferredHeight: 64 }
         }
+    }
+
+    Components.LoadingIndicator {
+        visible: root.deferredSessionModel === null
+        titleText: "Loading history..."
     }
 }
