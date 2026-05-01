@@ -34,6 +34,18 @@ ApplicationWindow {
         Navigator.stack = pageStack
     }
 
+    // Mediator: Handle global error state from AppState
+    Connections {
+        target: AppState
+        function onHasErrorChanged() {
+            if (AppState.hasError) {
+                globalErrorDialog.open()
+            } else {
+                globalErrorDialog.close()
+            }
+        }
+    }
+
     RowLayout {
         anchors.fill: parent
         spacing: 0
@@ -82,5 +94,28 @@ ApplicationWindow {
 
     Components.LoadingIndicator{
         id: globalLoader
+    }
+
+    // Global Error Reporting UI
+    Components.MessageDialog {
+        id: globalErrorDialog
+
+        // Data flows downwards (Rules 4 & 5)
+        dialogType: Components.MessageDialog.Error
+        title: "System Error"
+        text: AppState.lastErrorString
+        primaryText: "Dismiss"
+
+        // Actions flow upwards (Rules 3, 5, 6, & 7)
+        onAccepted: {
+            AppState.clearError()
+        }
+
+        onClosed: {
+            // Failsafe: in case it was closed via ESC key or clicking outside
+            if (AppState.hasError) {
+                AppState.clearError()
+            }
+        }
     }
 }

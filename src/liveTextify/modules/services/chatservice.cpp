@@ -1,4 +1,3 @@
-// chatservice.cpp
 #include "chatservice.h"
 #include "liveTextify/modules/services/databaseservice.h"
 #include "liveTextify/modules/database/repositories/chunkrepository.h"
@@ -10,19 +9,22 @@
 #include <QtLlama/EmbeddingWorker.h>
 #include <QtRag/QtRag.h>
 
+// ── RAG adapters ─────────────────────────────────────────────────────────────
+
 class AppRagEmbedder : public QtRag::IRagEmbedder {
 public:
     explicit AppRagEmbedder(QtLlama::Embedder* emb, QObject* parent = nullptr)
-        : QtRag::IRagEmbedder(parent), m_emb(emb) {
-        connect(m_emb, &QtLlama::Embedder::embeddingReady,
-                this, &QtRag::IRagEmbedder::embeddingReady);
-        // Map QtLlama::Error → string for the legacy IRagEmbedder interface.
-        // RagEngine::onEmbeddingError() discards the string and emits its own enum.
-        connect(m_emb, &QtLlama::Embedder::errorOccurred,
-                this, [this](QtLlama::Error e) {
-                    emit errorOccurred(QtLlama::errorToString(e));
+        : QtRag::IRagEmbedder(parent), m_emb(emb)
+    {
+
+        connect(m_emb, &QtLlama::Embedder::embeddingReady, this,  &QtRag::IRagEmbedder::embeddingReady);
+
+        connect(m_emb, &QtLlama::Embedder::errorOccurred, this, [this](QtLlama::Error /*e*/) {
+                    emit QtRag::IRagEmbedder::errorOccurred(QtRag::Error::EmbeddingFailed);
                 });
+
     }
+
     void generateEmbedding(const QString& text, int chunkIndex) override {
         m_emb->generateEmbedding(text, chunkIndex);
     }
@@ -49,6 +51,8 @@ private:
     DatabaseService* m_db;
 };
 
+// ── ChatService ───────────────────────────────────────────────────────────────
+
 ChatService::ChatService(DatabaseService* database, QObject* parent)
     : QObject(parent)
     , m_database(database)
@@ -63,25 +67,40 @@ ChatService::ChatService(DatabaseService* database, QObject* parent)
 
     updateRagConfig();
 
+    // ── Status ────────────────────────────────────────────────────────────────
     connect(m_llama, &QtLlama::Session::statusChanged,
             this, &ChatService::llamaStatusChanged);
-    connect(m_llama, &QtLlama::Session::textGenerated,
-            this, &ChatService::onLLMTextGenerated);
-    connect(m_llama, &QtLlama::Session::isGeneratingChanged,
-            this, &ChatService::onLLMStateChanged);
 
     connect(m_embedder, &QtLlama::Embedder::statusChanged,
             this, &ChatService::embedderStatusChanged);
 
-    // Typed error forwarding
-    connect(m_llama,    &QtLlama::Session::errorOccurred, this, &ChatService::llamaErrorOccurred);
-    connect(m_embedder, &QtLlama::Embedder::errorOccurred, this, &ChatService::embedderErrorOccurred);
+    // ── Generation ────────────────────────────────────────────────────────────
+    connect(m_llama, &QtLlama::Session::textGenerated,
+            this, &ChatService::onLLMTextGenerated);
+
+    connect(m_llama, &QtLlama::Session::isGeneratingChanged,
+            this, [this](bool generating) {
+                emit isLlamaGeneratingChanged(generating);
+                onLLMStateChanged(generating);
+            });
+
+    // ── Errors ────────────────────────────────────────────────────────────────
+    connect(m_llama, &QtLlama::Session::errorOccurred,
+            this, &ChatService::llamaErrorOccurred);
+
+    connect(m_embedder, &QtLlama::Embedder::errorOccurred,
+            this, &ChatService::embedderErrorOccurred);
 }
 
 ChatService::~ChatService() = default;
 
 QtLlama::Status ChatService::llamaStatus()    const { return m_llama->status(); }
 QtLlama::Status ChatService::embedderStatus() const { return m_embedder->status(); }
+
+
+void ChatService::stopGeneration() {
+    m_llama->stop();
+}
 
 void ChatService::updateRagConfig() {
     m_ragEngine = std::make_unique<QtRag::RagEngine>(
@@ -92,6 +111,7 @@ void ChatService::updateRagConfig() {
 
     connect(m_ragEngine.get(), &QtRag::RagEngine::contextReady,
             this, &ChatService::onContextReady);
+
     connect(m_ragEngine.get(), &QtRag::RagEngine::errorOccurred,
             this, &ChatService::ragErrorOccurred);
 }
@@ -110,6 +130,12 @@ void ChatService::onActiveSessionChanged(Session* activeSession) {
     }
 
     loadModels(activeSession);
+}
+
+void ChatService::onActiveSessionConfigChanged(const SessionConfig& config) {
+    m_llama->setConfig(config.llm);
+    m_embedder->setConfig(config.emb);
+    // Again no loadModel() — autoReload handles it
 }
 
 void ChatService::loadModels(Session* activeSession) {
@@ -149,7 +175,7 @@ void ChatService::onContextReady(const QString& context, int sessionId) {
     QString enriched = m_pendingUserMessage;
     if (!context.isEmpty()) {
         enriched = QString("Relevant fragments from the live speech transcription:\n%1\n\nUser Question: %2")
-        .arg(context).arg(m_pendingUserMessage);
+                   .arg(context).arg(m_pendingUserMessage);
     }
     generateLlmPrompt(enriched, sessionId);
 }
@@ -165,7 +191,8 @@ void ChatService::generateLlmPrompt(const QString& currentInput, int sessionId) 
     int start = std::max(0, msgModel->count() - 5);
     for (int i = start; i < msgModel->count() - 1; ++i) {
         auto m = msgModel->get(i);
-        QtLlama::Role role = (m.role == "user") ? QtLlama::Role::User : QtLlama::Role::Assistant;
+        QtLlama::Role role = (m.role == "user") ? QtLlama::Role::User
+                                                : QtLlama::Role::Assistant;
         messages.append({role, m.content});
     }
     messages.append({QtLlama::Role::User, currentInput});

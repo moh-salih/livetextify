@@ -125,7 +125,7 @@ Page {
                     Components.FloatingActionButton {
                         Layout.alignment: Qt.AlignHCenter | Qt.AlignBottom
                         icon: root.showChat ? "description" : "forum"
-                        text: root.showChat ? "Transcript" : "Neural Chat"
+                        text: root.showChat ? "Transcript" : "Chat"
 
                         // Prevent the button from forcing the sidebar wider than it needs to be
                         Layout.maximumWidth: 160

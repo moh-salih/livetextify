@@ -32,6 +32,18 @@ TranscriptionService::TranscriptionService(QObject* parent)
 
     connect(mAudioPipeline, &QtAudioCapture::AudioPipeline::errorOccurred,
             this, &TranscriptionService::audioErrorOccurred);
+
+    connect(mWhisper, &QtWhisper::Session::reloadRequired,this, []{
+        Logger::info("Whisper is saying relad is required");
+    });
+
+}
+
+void TranscriptionService::onActiveSessionConfigChanged(const SessionConfig& config) {
+    mWhisper->setConfig(config.stt);
+    mAudioPipeline->setConfig(config.audio);
+    // No loadModel() call here — Engine::setConfig handles reload
+    // automatically via autoReload flag
 }
 
 TranscriptionService::~TranscriptionService() = default;

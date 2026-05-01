@@ -1,7 +1,8 @@
 // sessionconfigmanager.cpp
 #include "sessionconfigmanager.h"
 
-SessionConfigManager::SessionConfigManager(QObject* parent) : QObject(parent) {}
+SessionConfigManager::SessionConfigManager(QObject* parent) : QObject(parent) {
+}
 
 void SessionConfigManager::seedFrom(const SessionConfig& cfg) {
     mConfig = cfg;

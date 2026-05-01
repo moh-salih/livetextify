@@ -1,4 +1,3 @@
-// sessionmanager.cpp
 #include "sessionmanager.h"
 #include "liveTextify/modules/services/sessionservice.h"
 #include "liveTextify/modules/services/transcriptionservice.h"
@@ -31,12 +30,11 @@ SessionManager::SessionManager(SettingsManager* settings, QObject* parent)
             this, [this](Session*) { setSessionStatus(SessionStatus::Idle); });
 
     // ── Chat ──────────────────────────────────────────────────────────────────
-    connect(mSessionService, &SessionService::userMessageReady,
-            mChatService, &ChatService::onUserMessageReady);
-
+    connect(mSessionService, &SessionService::userMessageReady, mChatService, &ChatService::onUserMessageReady);
+    connect(mSessionService, &SessionService::activeSessionConfigChanged, mChatService, &ChatService::onActiveSessionConfigChanged);
     // ── Transcription flow ────────────────────────────────────────────────────
-    connect(mTranscriptionService, &TranscriptionService::transcriptionUpdated,
-            mSessionService, &SessionService::onTranscriptionUpdated);
+    connect(mTranscriptionService, &TranscriptionService::transcriptionUpdated, mSessionService, &SessionService::onTranscriptionUpdated);
+    connect(mSessionService, &SessionService::activeSessionConfigChanged, mTranscriptionService, &TranscriptionService::onActiveSessionConfigChanged);
 
     connect(mSessionService, &SessionService::transcriptionUpdated,
             mChatService, &ChatService::onTranscriptionUpdated);
@@ -71,36 +69,39 @@ SessionManager::SessionManager(SettingsManager* settings, QObject* parent)
                 emit embedderStatusChanged();
             });
 
+    // ── LLM generation state ──────────────────────────────────────────────────
+    connect(mChatService, &ChatService::isLlamaGeneratingChanged,
+            this, [this](bool generating) {
+                if (mIsLlamaGenerating == generating) return;
+                mIsLlamaGenerating = generating;
+                emit isLlamaGeneratingChanged();
+            });
+
     // ── Error wiring ──────────────────────────────────────────────────────────
-    // Whisper
     connect(mTranscriptionService, &TranscriptionService::errorOccurred,
             this, [this](QtWhisper::Error e) {
                 Logger::error(QtWhisper::errorToString(e));
                 reportError(LiveTextify::fromWhisperError(e));
             });
 
-    // Audio capture
     connect(mTranscriptionService, &TranscriptionService::audioErrorOccurred,
             this, [this](QtAudioCapture::Error e) {
                 Logger::error(QtAudioCapture::errorToString(e));
                 reportError(LiveTextify::fromAudioError(e));
             });
 
-    // LLM
     connect(mChatService, &ChatService::llamaErrorOccurred,
             this, [this](QtLlama::Error e) {
                 Logger::error(QtLlama::errorToString(e));
                 reportError(LiveTextify::fromLlamaError(e, false));
             });
 
-    // Embedder
     connect(mChatService, &ChatService::embedderErrorOccurred,
             this, [this](QtLlama::Error e) {
                 Logger::error(QtLlama::errorToString(e));
                 reportError(LiveTextify::fromLlamaError(e, true));
             });
 
-    // RAG
     connect(mChatService, &ChatService::ragErrorOccurred,
             this, [this](QtRag::Error e) {
                 Logger::error(QtRag::errorToString(e));
@@ -141,6 +142,10 @@ void SessionManager::toggleRecording() {
         mTranscriptionService->stopTranscription();
     else
         mTranscriptionService->startTranscription();
+}
+
+void SessionManager::stopGeneration() {
+    mChatService->stopGeneration();
 }
 
 SessionManager::~SessionManager() = default;

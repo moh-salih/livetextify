@@ -6,6 +6,7 @@
 #include <QtAudioCapture/Types.h>
 
 class Session;
+struct SessionConfig;
 
 namespace QtAudioCapture { class AudioPipeline; }
 namespace QtWhisper      { class Session; }
@@ -23,7 +24,7 @@ public slots:
     void startTranscription();
     void stopTranscription();
     void onActiveSessionChanged(Session* activeSession);
-
+    void onActiveSessionConfigChanged(const SessionConfig& config);
 signals:
     void isRecordingChanged();
     void whisperStatusChanged(QtWhisper::Status status);

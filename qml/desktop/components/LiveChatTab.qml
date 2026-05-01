@@ -133,7 +133,7 @@ Rectangle {
                 Layout.alignment: msgRoot.isUser ? Qt.AlignRight : Qt.AlignLeft
                 Layout.leftMargin: msgRoot.isUser ? 0 : 16
                 Layout.rightMargin: msgRoot.isUser ? 16 : 0
-                text: msgRoot.isUser ? "YOU" : "NEURAL ASSISTANT"
+                text: msgRoot.isUser ? "YOU" : "ASSISTANT"
                 font.family: Fonts.bodyFamily
                 font.pixelSize: 10
                 font.bold: true

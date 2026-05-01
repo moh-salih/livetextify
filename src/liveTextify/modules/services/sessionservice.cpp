@@ -17,6 +17,22 @@ SessionService::SessionService(DatabaseService* database, QObject* parent)
 
 SessionService::~SessionService() = default;
 
+
+void SessionService::onActiveSessionChanged(Session* session) {
+    if (session)
+        mConfigManager->seedFrom(session->config());  // copy struct in
+    else
+        mConfigManager->clear();
+}
+
+void SessionService::onConfigChanged() {
+    if (mActiveSession) {
+        mActiveSession->setConfig(mConfigManager->toConfig());
+        emit activeSessionConfigChanged(mActiveSession->config());
+    }
+}
+
+
 void SessionService::onTranscriptionUpdated(const QString& text) {
     if (!mActiveSession) return;
 

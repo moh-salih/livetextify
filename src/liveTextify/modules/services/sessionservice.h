@@ -40,21 +40,13 @@ public slots:
     void onTranscriptionUpdated(const QString& text);
 
 private slots:
-    void onActiveSessionChanged(Session* session) {
-        if (session)
-            mConfigManager->seedFrom(session->config());  // copy struct in
-        else
-            mConfigManager->clear();
-    }
-
-    void onConfigChanged() {
-        if (mActiveSession)
-            mActiveSession->setConfig(mConfigManager->toConfig()); // write back
-    }
+    void onActiveSessionChanged(Session* session);
+    void onConfigChanged();
 signals:
     void sessionCreated(int index);
     void sessionDeleted(int index);
     void activeSessionChanged(Session* session);
+    void activeSessionConfigChanged(const SessionConfig& config);
 
     // Consumed by TranscriptionService / ChatService
     void transcriptionUpdated(const QString& text, int sessionId);
