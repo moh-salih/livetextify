@@ -17,6 +17,7 @@
 #   include <mach/mach_host.h>
 #   include <sys/sysctl.h>
 #   include <IOKit/IOKitLib.h>
+#   include <CoreFoundation/CoreFoundation.h>
 
 #elif defined(Q_OS_LINUX) || defined(Q_OS_ANDROID)
 #   include <QFile>
