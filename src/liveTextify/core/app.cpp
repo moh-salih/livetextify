@@ -108,21 +108,28 @@ App::~App() {
 }
 
 bool App::init() {
-    setupControllers();
-    setupConnections();
-    loadInitialConfigs();
+    bool success = false;
+    try{
+        setupControllers();
+        setupConnections();
+        loadInitialConfigs();
 
-    if (mResourceManager)
-        mResourceManager->loadResources();
+        if (mResourceManager)
+            mResourceManager->loadResources();
 
-    QString appDir = QCoreApplication::applicationDirPath();
-    mEngine.addImportPath(appDir + "/qml");
-    mEngine.addImportPath("qrc:/qt/qml");
+        QString appDir = QCoreApplication::applicationDirPath();
+        mEngine.addImportPath(appDir + "/qml");
+        mEngine.addImportPath("qrc:/qt/qml");
 
-    mEngine.loadFromModule("liveTextify", "Main");
-    bool success = !mEngine.rootObjects().isEmpty();
-    success ? Logger::info("Application initialized successfully.")
-            : Logger::critical("Failed to load QML engine.");
+        mEngine.loadFromModule("liveTextify", "Main");
+        success = !mEngine.rootObjects().isEmpty();
+        success ? Logger::info("Application initialized successfully.") : Logger::critical("Failed to load QML engine.");
+    }catch(const std::exception& e){
+        Logger::error(QString("Exception: ").append(e.what()));
+    }catch(...){
+        Logger::error("Unknown exception has occurred!");
+    }
+
     return success;
 }
 
