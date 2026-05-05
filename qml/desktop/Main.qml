@@ -24,14 +24,67 @@ ApplicationWindow {
 
     flags: Qt.Window | Qt.CustomizeWindowHint | Qt.FramelessWindowHint
 
+    // --- Standard App Shortcuts ---
     Shortcut {
-        sequence: "Escape"
-        onActivated: Qt.quit()
+        // 'Back' handles Android native back buttons as well
+        sequences: ["Escape", "Back"]
+        onActivated: {
+            if (pageStack.depth > 1) {
+                // If we are deep in the stack, pop backward
+                Navigator.goBack()
+            } else {
+                // If we are on the root dashboard page, prompt to exit
+                exitConfirmDialog.open()
+            }
+        }
     }
 
     Shortcut {
         sequence: "Ctrl+H"
         onActivated: Theme.isClearMode = !Theme.isClearMode
+    }
+
+    // --- Cross-Platform Split Screen Emulation ---
+    Shortcut {
+        sequences: ["Meta+Left", "Ctrl+Alt+Left"]
+        onActivated: {
+            if (root.visibility === Window.Maximized) root.showNormal()
+
+            root.x = Screen.virtualX
+            root.y = Screen.virtualY
+            root.width = Screen.desktopAvailableWidth / 2
+            root.height = Screen.desktopAvailableHeight
+        }
+    }
+
+    Shortcut {
+        sequences: ["Meta+Right", "Ctrl+Alt+Right"]
+        onActivated: {
+            if (root.visibility === Window.Maximized) root.showNormal()
+
+            root.x = Screen.virtualX + (Screen.desktopAvailableWidth / 2)
+            root.y = Screen.virtualY
+            root.width = Screen.desktopAvailableWidth / 2
+            root.height = Screen.desktopAvailableHeight
+        }
+    }
+
+    Shortcut {
+        sequences: ["Meta+Up", "Ctrl+Alt+Up"]
+        onActivated: {
+            root.showMaximized()
+        }
+    }
+
+    Shortcut {
+        sequences: ["Meta+Down", "Ctrl+Alt+Down"]
+        onActivated: {
+            if (root.visibility === Window.Maximized) {
+                root.showNormal()
+            } else {
+                root.showMinimized()
+            }
+        }
     }
 
     Component.onCompleted: {
@@ -83,11 +136,20 @@ ApplicationWindow {
                 anchors.fill: parent
                 initialItem: Pages.DashboardPage{}
 
-                replaceEnter: Transition {
+                // Setup proper push/pop transitions for a smooth stack history feel
+                pushEnter: Transition {
+                    NumberAnimation { property: "opacity"; from: 0.0; to: 1.0; duration: 150; easing.type: Easing.OutQuad }
+                    NumberAnimation { property: "scale"; from: 0.95; to: 1.0; duration: 150; easing.type: Easing.OutQuad }
+                }
+                pushExit: Transition {
+                    NumberAnimation { property: "opacity"; from: 1.0; to: 0.0; duration: 150; easing.type: Easing.InQuad }
+                }
+                popEnter: Transition {
                     NumberAnimation { property: "opacity"; from: 0.0; to: 1.0; duration: 150; easing.type: Easing.OutQuad }
                 }
-                replaceExit: Transition {
+                popExit: Transition {
                     NumberAnimation { property: "opacity"; from: 1.0; to: 0.0; duration: 150; easing.type: Easing.InQuad }
+                    NumberAnimation { property: "scale"; from: 1.0; to: 0.95; duration: 150; easing.type: Easing.InQuad }
                 }
             }
 
@@ -96,6 +158,8 @@ ApplicationWindow {
                 anchors.left: parent.left
                 anchors.right: parent.right
                 z: 10
+                // Wires up the TopBar close X button to the exit dialog
+                onCloseRequested: exitConfirmDialog.open()
             }
         }
     }
@@ -107,32 +171,37 @@ ApplicationWindow {
     // Global Error Reporting UI
     Components.MessageDialog {
         id: globalErrorDialog
-        // Data flows downwards (Rules 4 & 5)
         dialogType: Components.MessageDialog.Error
         title: "System Error"
         text: AppState.lastErrorString
         primaryText: "Dismiss"
 
-        // Actions flow upwards (Rules 3, 5, 6, & 7)
-        onAccepted: {
-            AppState.clearError()
-        }
-
+        onAccepted: AppState.clearError()
         onClosed: {
-            if (AppState.hasError) {
-                AppState.clearError()
-            }
+            if (AppState.hasError) AppState.clearError()
         }
     }
 
+    // Exit Confirmation UI
+    Components.MessageDialog {
+        id: exitConfirmDialog
+        dialogType: Components.MessageDialog.Warning
+        title: "Exit Application"
+        text: "Are you sure you want to exit LiveTextify? Active processes will be terminated."
+        primaryText: "Exit"
+        secondaryText: "Cancel"
+
+        onAccepted: Qt.quit()
+        // onRejected auto-closes, no extra code needed here
+    }
+
     // --- Window Mediator Actions ---
-    // Handling the resize signal purely at the root page level
     Components.WindowResizeGrips {
         anchors.fill: parent
-        z: 100 // Must be placed on top of all child content to capture edge hovers
+        z: 100
 
         onResizeRequested: (edge) => {
-            root.startSystemResize(edge) // Action initiated by mediator
+            root.startSystemResize(edge)
         }
     }
 

@@ -108,6 +108,7 @@ public:
 
     // ── QML callables ─────────────────────────────────────────────────────────
     Q_INVOKABLE void approveReload();
+    Q_INVOKABLE void resetToDefaults();
 
 signals:
     // Per-property signals

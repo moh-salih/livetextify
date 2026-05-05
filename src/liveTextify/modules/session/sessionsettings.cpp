@@ -1,9 +1,7 @@
 #include "liveTextify/modules/session/sessionsettings.h"
 #include <QSettings>
 
-SessionSettings::SessionSettings(QObject* parent)
-    : QObject(parent)
-{
+SessionSettings::SessionSettings(QObject* parent): QObject(parent){
 
 }
 
@@ -298,4 +296,46 @@ void SessionSettings::setMaxWindow(int v) {
 // ── QML callables ─────────────────────────────────────────────────────────────
 void SessionSettings::approveReload() {
     emit reloadApproved();
+}
+
+void SessionSettings::resetToDefaults() {
+    QSettings settings;
+    settings.remove("STT");
+    settings.remove("LLM");
+    settings.remove("EMB");
+    settings.remove("RAG");
+    settings.remove("AUDIO");
+    settings.sync();
+
+    mConfig.stt         = SttConfig();
+    mConfig.llm         = LLMConfig();
+    mConfig.emb         = EmbConfig();
+    mConfig.rag         = RagConfig();
+    mConfig.audio       = AudioConfig();
+    mConfig.enableRag    = true;
+
+
+    emit languageChanged();
+    emit autoDetectLanguageChanged();
+    emit translateChanged();
+
+    emit systemPromptChanged();
+    emit temperatureChanged();
+    emit topPChanged();
+    emit topKChanged();
+    emit repeatPenaltyChanged();
+    emit maxTokensChanged();
+    emit llmContextLengthChanged();
+
+    emit enableRagChanged();
+    emit ragTopKChanged();
+    emit ragMinScoreChanged();
+    emit minChunkSizeChanged();
+    emit maxChunkSizeChanged();
+
+    emit stepChanged();
+    emit keepChanged();
+    emit maxWindowChanged();
+
+    notifyChange();
 }

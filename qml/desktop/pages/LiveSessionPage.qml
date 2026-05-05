@@ -13,6 +13,11 @@ Page {
     property bool showChat: false
     property int sessionSeconds: 0
 
+    // Force closing the session if the user navigates away using TopBar or Escape
+    StackView.onRemoved: {
+        AppState.closeActiveSession()
+    }
+
     // Model name derivations using sessionConfig
     property string activeSttModelName: {
         if (AppState.sttModel && AppState.sttModel.selectedPath) {
@@ -35,7 +40,6 @@ Page {
         return "No Embedding Model"
     }
 
-    // FIX: Bind directly to the actual audio pipeline recording status!
     Timer {
         id: sessionTimer
         interval: 1000
@@ -45,8 +49,7 @@ Page {
     }
 
     function handleCloseSession() {
-        AppState.closeActiveSession()
-        Navigator.goToDashboard()
+        Navigator.goBack() // Will trigger StackView.onRemoved to gracefully close the session
     }
 
     background: Components.PageBackground {
@@ -57,8 +60,11 @@ Page {
     // Add the Panel Overlay
     Components.SessionSettingsPanel {
         id: sessionSettingsPanel
-        // Bind directly to the active session's settings manager
         settings: SessionManager.sessionService.settings
+
+        onResetDefaultsRequested: {
+            AppState.resetSessionSettings()
+        }
     }
 
     ColumnLayout {
@@ -68,8 +74,9 @@ Page {
         // --- Mediator Pattern: Handle components entirely via bound properties and signals ---
         Components.UnifiedSessionHeader {
             Layout.fillWidth: true
+            visible: !Theme.isClearMode
 
-            // Push State Downward (FIXED to use isRecording)
+            // Push State Downward
             sessionTitle: AppState.activeSession ? AppState.activeSession.title : "No Active Session"
             isRecording: AppState.isRecording
             sessionSeconds: root.sessionSeconds
@@ -114,7 +121,6 @@ Page {
                 Components.LiveTranscriptTab {
                     Layout.fillWidth: true; Layout.fillHeight: true
                     session: AppState.activeSession
-                    // FIX: Pass the accurate boolean state here too
                     isRecording: AppState.isRecording
                 }
 

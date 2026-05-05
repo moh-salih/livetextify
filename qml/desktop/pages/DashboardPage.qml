@@ -43,11 +43,6 @@ Page {
     }
 
     // --- Actions ---
-    function handleNewTranscription() {
-        AppState.startNewSession()
-        Navigator.goToLiveSession("Active Session")
-    }
-
     function handleLibraryNavigation() {
         Navigator.goToModelLibrary()
     }
@@ -55,6 +50,22 @@ Page {
     background: Components.PageBackground {
         topColor: Theme.surfaceContainerHighest
         bottomColor: Theme.background
+    }
+
+    // --- New Session Dialog ---
+    Components.NewSessionDialog {
+        id: newSessionDialog
+        settings: AppState.sessionSettings // Binds to global defaults for starting
+
+        onStartRequested: function(title) {
+            AppState.startNewSession(title)
+            newSessionDialog.close()
+            Navigator.goToLiveSession("Active Session")
+        }
+
+        onResetDefaultsRequested: {
+            AppState.resetSessionSettings()
+        }
     }
 
     ScrollView {
@@ -71,11 +82,12 @@ Page {
             Components.DashboardHero {
                 Layout.fillWidth: true
 
-                // Pass evaluated state down
                 hasModels: root.hasSttModels
 
-                // Handle upward signals
-                onNewTranscriptionClicked: root.handleNewTranscription()
+                onNewTranscriptionClicked: {
+                    newSessionDialog.defaultTitle = "Session " + Qt.formatDateTime(new Date(), "MMM d, hh:mm")
+                    newSessionDialog.open()
+                }
                 onLibraryClicked: root.handleLibraryNavigation()
             }
 

@@ -36,6 +36,7 @@ SessionManager::SessionManager(QObject* parent)
     }
 
 
+
     // ── Settings → Services ───────────────────────────────────────────────────
     connect(settings, &SessionSettings::configChanged, mAudioService, &AudioService::onConfigChanged);
     connect(settings, &SessionSettings::configChanged, mTranscriptionService, &TranscriptionService::onConfigChanged);

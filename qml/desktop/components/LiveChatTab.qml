@@ -36,7 +36,7 @@ Rectangle {
 
             model: root.chatModel
 
-            onCountChanged: Qt.callLater(() => chatList.positionViewAtEnd())
+            // onCountChanged: Qt.callLater(() => chatList.positionViewAtEnd())
 
             delegate: ChatMessage {
                 isUser: model.role === "user"
@@ -133,7 +133,7 @@ Rectangle {
                 Layout.alignment: msgRoot.isUser ? Qt.AlignRight : Qt.AlignLeft
                 Layout.leftMargin: msgRoot.isUser ? 0 : 16
                 Layout.rightMargin: msgRoot.isUser ? 16 : 0
-                text: msgRoot.isUser ? "YOU" : "ASSISTANT"
+                text: msgRoot.isUser ? "" : "ASSISTANT"
                 font.family: Fonts.bodyFamily
                 font.pixelSize: 10
                 font.bold: true

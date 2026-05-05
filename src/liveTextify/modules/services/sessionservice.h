@@ -19,7 +19,7 @@ public:
     explicit SessionService(DatabaseService* database, QObject* parent = nullptr);
     ~SessionService() override;
 
-    Q_INVOKABLE Session* createSession();
+    Q_INVOKABLE Session* createSession(const QString& title = "New Session");
     Q_INVOKABLE bool     openSessionById(int sessionId);
     Q_INVOKABLE bool     deleteSession(int index);
     Q_INVOKABLE bool     deleteSessionById(int sessionId);

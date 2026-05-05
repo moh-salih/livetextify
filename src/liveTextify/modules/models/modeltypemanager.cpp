@@ -73,29 +73,45 @@ void ModelTypeManager::selectDefault(int index) {
 
     const QString path = item.isLocal ? mBaseDir + "/" + item.fileName : storagePath(item.url);
 
+    // Prevent redundant reload events if the path hasn't actually changed
+    if (mSelectedPath == path) {
+        emit selectedPathChanged(path); // Ensure UI sync without forcing a heavy reload
+        return;
+    }
+
     mSelectedPath = path;
     mModel->setExclusiveDefault(index);
     emit selectedPathChanged(path);
 }
 
 void ModelTypeManager::syncSelectedPath(const QString& path) {
-    if (path.isEmpty()) {
-        mSelectedPath.clear();
-        mModel->setExclusiveDefault(-1);
-        return;
-    }
-
-    const int idx = mModel->findIndexByPath(path);
+    int idx = path.isEmpty() ? -1 : mModel->findIndexByPath(path);
 
     // Ensure the model exists and is fully downloaded before setting it as default
     if (idx >= 0 && mModel->getItem(idx).downloaded) {
         mSelectedPath = path;
         mModel->setExclusiveDefault(idx);
+        emit selectedPathChanged(mSelectedPath);
     } else {
-        // Model file is missing or not downloaded -> unset it
+        // Fallback: If no model is explicitly set, but there ARE downloaded models, auto-activate the first one
         mSelectedPath.clear();
         mModel->setExclusiveDefault(-1);
-        emit selectedPathChanged(QString()); // Notify settings to wipe the invalid path
+
+        bool autoSelected = false;
+        for (int i = 0; i < mModel->rowCount(); ++i) {
+            if (mModel->getItem(i).downloaded) {
+                // Set internally to bypass premature signal emissions during loop
+                mSelectedPath = mModel->getItem(i).isLocal ? mBaseDir + "/" + mModel->getItem(i).fileName : storagePath(mModel->getItem(i).url);
+                mModel->setExclusiveDefault(i);
+                emit selectedPathChanged(mSelectedPath);
+                autoSelected = true;
+                break;
+            }
+        }
+
+        if (!autoSelected) {
+            emit selectedPathChanged(QString()); // Notify settings to wipe the invalid path
+        }
     }
 }
 
@@ -106,7 +122,6 @@ void ModelTypeManager::downloadModel(int index) {
     if (item.url.isEmpty()) return;
 
     const QString path = storagePath(item.url);
-
 
     auto* dl = new FileDownloader(QUrl(item.url), path, &mNam, this);
     mActiveDownloads.insert(dl, { index });
@@ -127,6 +142,12 @@ void ModelTypeManager::downloadModel(int index) {
         if (ok) {
             mModel->setDownloadedStatus(task.index, true);
             mModel->updateProgress(task.index, 1.0f);
+
+            // Auto-select if it's the only one downloaded
+            if (mSelectedPath.isEmpty()) {
+                selectDefault(task.index);
+            }
+
             emit downloadFinished(true);
         } else {
             emit errorOccurred(err);
@@ -167,14 +188,13 @@ void ModelTypeManager::deleteModel(const QString& url) {
         if (mSelectedPath == path) {
             mSelectedPath.clear();
             mModel->setExclusiveDefault(-1);
-            emit selectedPathChanged(QString());
+            syncSelectedPath(""); // Triggers the fallback auto-selection
         }
     }
 }
 
 void ModelTypeManager::deleteModelAt(int index) {
     if (index < 0 || index >= mModel->rowCount()) return;
-
 
     const ModelItem item = mModel->getItem(index);
     const QString path = item.isLocal ? mBaseDir + "/" + item.fileName : storagePath(item.url);
@@ -190,7 +210,7 @@ void ModelTypeManager::deleteModelAt(int index) {
     if (mSelectedPath == path) {
         mSelectedPath.clear();
         mModel->setExclusiveDefault(-1);
-        emit selectedPathChanged(QString());
+        syncSelectedPath(""); // Triggers the fallback auto-selection
     }
 }
 

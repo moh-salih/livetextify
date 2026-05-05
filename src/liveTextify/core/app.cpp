@@ -133,7 +133,7 @@ int App::exec() {
 void App::setupApplicationInfo() {
     mApp.setOrganizationName("SApps");
     mApp.setOrganizationDomain("com.salih.livetextify");
-    mApp.setApplicationName("liveTextifyx");
+    mApp.setApplicationName("liveTextify");
     mApp.setApplicationDisplayName("LiveTextify: Voice to Text to Insight");
     mApp.setApplicationVersion("1.0.0");
     mApp.setWindowIcon(QIcon(":/icons/app.png"));

@@ -8,14 +8,15 @@ import "../singletons"
 Popup {
     id: root
 
-    // The target C++ SessionSettings object to bind to
     property var settings
+    property string defaultTitle: "New Session"
 
-    signal reloadApproved()
+    // Component Signals (Upward to Mediator)
+    signal startRequested(string title)
     signal resetDefaultsRequested()
 
     width: Math.min(760, Overlay.overlay ? Overlay.overlay.width - 48 : 760)
-    height: Math.min(520, Overlay.overlay ? Overlay.overlay.height - 48 : 520)
+    height: Math.min(680, Overlay.overlay ? Overlay.overlay.height - 48 : 680)
     anchors.centerIn: Overlay.overlay
     modal: true
     dim: true
@@ -32,102 +33,6 @@ Popup {
         ParallelAnimation {
             NumberAnimation { property: "opacity"; from: 1.0; to: 0.0; duration: 150; easing.type: Easing.InCubic }
             NumberAnimation { property: "scale"; from: 1.0; to: 0.95; duration: 150; easing.type: Easing.InCubic }
-        }
-    }
-
-    // --- Backend Signal Connections ---
-    Connections {
-        target: root.settings || null
-        ignoreUnknownSignals: true
-
-        // Listen for the backend telling us a heavy parameter changed
-        function onReloadRequired() {
-            reloadConfirmDialog.open()
-        }
-    }
-
-    // --- Engine Reload Confirmation Dialog ---
-    Popup {
-        id: reloadConfirmDialog
-        width: 400
-        height: 220
-        anchors.centerIn: parent
-        modal: true
-        dim: true
-        closePolicy: Popup.NoAutoClose
-
-        Overlay.modal: Rectangle { color: Qt.rgba(0, 0, 0, 0.6) }
-
-        background: Rectangle {
-            color: Theme.surfaceContainerHighest
-            radius: 16
-            border.color: Qt.rgba(Theme.outlineVariant.r, Theme.outlineVariant.g, Theme.outlineVariant.b, 0.4)
-            border.width: 1
-            layer.enabled: true
-            layer.effect: MultiEffect { shadowEnabled: true; shadowColor: "#000000"; shadowBlur: 30; shadowOpacity: 0.8 }
-        }
-
-        contentItem: ColumnLayout {
-            spacing: 16
-
-            RowLayout {
-                spacing: 12
-                Text { text: "warning"; font.family: Fonts.iconFamily; font.pixelSize: 28; color: Theme.errorColor }
-                Text { text: "Engine Reload Required"; font.family: Fonts.headlineFamily; font.pixelSize: 18; font.bold: true; color: Theme.textOnSurface }
-            }
-
-            Text {
-                text: "Applying this setting requires the neural engine to restart. Active generation or transcription will be momentarily interrupted."
-                font.family: Fonts.bodyFamily
-                font.pixelSize: 13
-                color: Theme.textOnSurfaceVariant
-                wrapMode: Text.WordWrap
-                Layout.fillWidth: true
-                lineHeight: 1.4
-            }
-
-            Item { Layout.fillHeight: true } // Spacer
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 16
-
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 44
-                    radius: 8
-                    color: cancelHover.containsMouse ? Qt.rgba(255, 255, 255, 0.05) : "transparent"
-                    border.color: Qt.rgba(Theme.outlineVariant.r, Theme.outlineVariant.g, Theme.outlineVariant.b, 0.6)
-                    border.width: 1
-                    Text { anchors.centerIn: parent; text: "Later"; font.family: Fonts.bodyFamily; font.pixelSize: 13; font.bold: true; color: Theme.textOnSurfaceVariant }
-                    MouseArea {
-                        id: cancelHover
-                        anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                        onClicked: reloadConfirmDialog.close()
-                    }
-                }
-
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 44
-                    radius: 8
-                    color: reloadHover.containsMouse ? Qt.rgba(Theme.errorColor.r, Theme.errorColor.g, Theme.errorColor.b, 0.8) : Theme.errorColor
-                    Behavior on color { ColorAnimation { duration: 150 } }
-
-                    Text { anchors.centerIn: parent; text: "Reload Now"; font.family: Fonts.bodyFamily; font.pixelSize: 13; font.bold: true; color: Theme.background }
-                    MouseArea {
-                        id: reloadHover
-                        anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                        onPressed: parent.scale = 0.97
-                        onReleased: parent.scale = 1.0
-                        onClicked: {
-                            if (root.settings) root.settings.approveReload()
-                            reloadConfirmDialog.close()
-                        }
-                    }
-                    Behavior on scale { NumberAnimation { duration: 100 } }
-                }
-            }
         }
     }
 
@@ -168,8 +73,8 @@ Popup {
 
                 ColumnLayout {
                     spacing: 2
-                    Text { text: "Session Configuration"; font.family: Fonts.headlineFamily; font.pixelSize: 18; font.bold: true; color: Theme.textOnSurface }
-                    Text { text: "Adjust inference, context, and memory parameters."; font.family: Fonts.bodyFamily; font.pixelSize: 11; color: Theme.textOnSurfaceVariant }
+                    Text { text: "New Transcription Session"; font.family: Fonts.headlineFamily; font.pixelSize: 18; font.bold: true; color: Theme.textOnSurface }
+                    Text { text: "Configure settings and start capturing live audio."; font.family: Fonts.bodyFamily; font.pixelSize: 11; color: Theme.textOnSurfaceVariant }
                 }
 
                 Item { Layout.fillWidth: true }
@@ -187,12 +92,48 @@ Popup {
             Rectangle { width: parent.width; height: 1; anchors.bottom: parent.bottom; color: Qt.rgba(Theme.outlineVariant.r, Theme.outlineVariant.g, Theme.outlineVariant.b, 0.2) }
         }
 
-        // Reusable Settings View
-        SessionSettingsView {
-            id: settingsView
-            settings: root.settings
+        // --- Body ---
+        ColumnLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
+            spacing: 0
+
+            // Title Input Block
+            ColumnLayout {
+                Layout.fillWidth: true
+                Layout.margins: 24
+                Layout.bottomMargin: 16
+                spacing: 8
+
+                Text { text: "Session Title"; font.family: Fonts.headlineFamily; font.pixelSize: 12; font.bold: true; color: Theme.textOnSurface }
+
+                TextField {
+                    id: titleField
+                    text: root.defaultTitle
+                    font.family: Fonts.bodyFamily
+                    font.pixelSize: 14
+                    color: Theme.textOnSurface
+                    background: Rectangle {
+                        color: Theme.surfaceContainerLowest
+                        radius: 8
+                        border.color: titleField.activeFocus ? Theme.primary : Qt.rgba(Theme.outlineVariant.r, Theme.outlineVariant.g, Theme.outlineVariant.b, 0.3)
+                    }
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 44
+                    leftPadding: 16
+                    rightPadding: 16
+                }
+            }
+
+            Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Qt.rgba(Theme.outlineVariant.r, Theme.outlineVariant.g, Theme.outlineVariant.b, 0.2) }
+
+            // Reusable Settings View
+            SessionSettingsView {
+                id: settingsView
+                settings: root.settings
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+            }
         }
 
         Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Qt.rgba(Theme.outlineVariant.r, Theme.outlineVariant.g, Theme.outlineVariant.b, 0.2) }
@@ -244,13 +185,36 @@ Popup {
                     Layout.preferredWidth: 100
                     Layout.preferredHeight: 40
                     radius: 8
+                    color: cancelBtnArea.containsMouse ? Qt.rgba(255, 255, 255, 0.05) : "transparent"
+                    border.color: Qt.rgba(Theme.outlineVariant.r, Theme.outlineVariant.g, Theme.outlineVariant.b, 0.6)
+                    border.width: 1
+                    Text { anchors.centerIn: parent; text: "Cancel"; font.family: Fonts.bodyFamily; font.pixelSize: 13; font.bold: true; color: Theme.textOnSurfaceVariant }
+                    MouseArea {
+                        id: cancelBtnArea
+                        anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                        onClicked: root.close()
+                    }
+                }
+
+                Rectangle {
+                    Layout.preferredWidth: 160
+                    Layout.preferredHeight: 40
+                    radius: 8
                     gradient: Theme.primaryGradient
-                    Text { anchors.centerIn: parent; text: "Done"; font.family: Fonts.bodyFamily; font.pixelSize: 13; font.bold: true; color: Theme.background }
+                    RowLayout {
+                        anchors.centerIn: parent
+                        spacing: 8
+                        Text { text: "play_arrow"; font.family: Fonts.iconFamily; font.pixelSize: 18; color: Theme.background }
+                        Text { text: "Start Session"; font.family: Fonts.bodyFamily; font.pixelSize: 13; font.bold: true; color: Theme.background }
+                    }
                     MouseArea {
                         anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                         onPressed: parent.scale = 0.96
                         onReleased: parent.scale = 1.0
-                        onClicked: root.close()
+                        onClicked: {
+                            root.startRequested(titleField.text)
+                        }
+                        Behavior on scale { NumberAnimation { duration: 100 } }
                     }
                 }
             }

@@ -13,6 +13,7 @@ Popup {
     property string title: "System Exception"
     property string text: "An error occurred."
     property string primaryText: "Dismiss"
+    property string secondaryText: "" // If provided, shows a cancel/secondary button
 
     // --- Dynamic Theming ---
     readonly property color accentColor: {
@@ -44,6 +45,7 @@ Popup {
 
     // --- Signals ---
     signal accepted()
+    signal rejected()
 
     // --- Popup Settings ---
     width: 480
@@ -206,63 +208,97 @@ Popup {
             }
         }
 
-        // 3. Action Button (Small, Right-Aligned)
-        Button {
-            id: actionBtn
-            Layout.alignment: Qt.AlignRight // Aligns the button to the bottom right!
-            Layout.preferredWidth: 130      // Fixed small width
-            Layout.preferredHeight: 40      // Standard small button height
+        // 3. Action Buttons (Right-Aligned)
+        RowLayout {
+            Layout.alignment: Qt.AlignRight
             Layout.topMargin: 8
+            spacing: 12
 
-            background: Rectangle {
-                radius: 8 // Subtle rounded corners instead of the massive pill shape
+            // Optional Secondary Button
+            Button {
+                visible: root.secondaryText !== ""
+                Layout.preferredWidth: 100
+                Layout.preferredHeight: 40
 
-                gradient: Gradient {
-                    orientation: Gradient.Horizontal
-                    GradientStop { position: 0.0; color: root.accentColor }
-                    GradientStop { position: 0.5; color: root.accentMidColor }
-                    GradientStop { position: 1.0; color: root.accentColor }
+                background: Rectangle {
+                    radius: 8
+                    color: "transparent"
+                    border.color: Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.4)
+                    border.width: 1
                 }
 
-                // Drop shadow
-                layer.enabled: true
-                layer.effect: MultiEffect {
-                    shadowEnabled: true
-                    shadowColor: root.accentColor
-                    shadowOpacity: 0.3
-                    shadowBlur: 1.0
-                    shadowVerticalOffset: 2
-                }
-            }
-
-            contentItem: RowLayout {
-                spacing: 8
-                anchors.centerIn: parent
-
-                Label {
-                    text: root.primaryText
+                contentItem: Text {
+                    text: root.secondaryText
                     font.family: "Space Grotesk"
                     font.bold: true
-                    font.pixelSize: 14 // Smaller text
-                    color: "#ffffff"
+                    font.pixelSize: 14
+                    color: root.accentColor
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
                 }
 
-                Text {
-                    font.family: "Material Symbols Outlined"
-                    text: root.dialogType === MessageDialog.Error ? "close" : "check"
-                    font.pixelSize: 16 // Smaller icon
-                    color: "#ffffff"
+                onClicked: {
+                    root.rejected()
+                    root.close()
                 }
+
+                scale: pressed ? 0.95 : 1.0
+                Behavior on scale { NumberAnimation { duration: 100 } }
             }
 
-            onClicked: {
-                root.accepted()
-                root.close()
-            }
+            // Primary Action Button
+            Button {
+                id: actionBtn
+                Layout.preferredWidth: 130
+                Layout.preferredHeight: 40
 
-            // Active scale effect
-            scale: pressed ? 0.95 : 1.0
-            Behavior on scale { NumberAnimation { duration: 100 } }
+                background: Rectangle {
+                    radius: 8
+                    gradient: Gradient {
+                        orientation: Gradient.Horizontal
+                        GradientStop { position: 0.0; color: root.accentColor }
+                        GradientStop { position: 0.5; color: root.accentMidColor }
+                        GradientStop { position: 1.0; color: root.accentColor }
+                    }
+
+                    layer.enabled: true
+                    layer.effect: MultiEffect {
+                        shadowEnabled: true
+                        shadowColor: root.accentColor
+                        shadowOpacity: 0.3
+                        shadowBlur: 1.0
+                        shadowVerticalOffset: 2
+                    }
+                }
+
+                contentItem: RowLayout {
+                    spacing: 8
+                    anchors.centerIn: parent
+
+                    Label {
+                        text: root.primaryText
+                        font.family: "Space Grotesk"
+                        font.bold: true
+                        font.pixelSize: 14
+                        color: "#ffffff"
+                    }
+
+                    Text {
+                        font.family: "Material Symbols Outlined"
+                        text: root.dialogType === MessageDialog.Error ? "close" : "check"
+                        font.pixelSize: 16
+                        color: "#ffffff"
+                    }
+                }
+
+                onClicked: {
+                    root.accepted()
+                    root.close()
+                }
+
+                scale: pressed ? 0.95 : 1.0
+                Behavior on scale { NumberAnimation { duration: 100 } }
+            }
         }
     }
 }

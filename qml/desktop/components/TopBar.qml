@@ -5,10 +5,11 @@ import QtQuick.Window
 import LiveTextify
 import "../singletons"
 
-// Made completely transparent. It acts as an invisible hit-box for dragging
-// and a container for the window controls and quick actions.
 Rectangle {
     id: root
+
+    // --- Action Signals ---
+    signal closeRequested()
 
     height: 48
     color: "transparent"
@@ -120,7 +121,7 @@ Rectangle {
             iconText: "close"
             tooltipText: "Close"
             isClose: true
-            onClicked: Qt.quit()
+            onClicked: root.closeRequested() // Delegate to root page to trigger dialog
         }
     }
 

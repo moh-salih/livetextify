@@ -37,7 +37,6 @@ QtObject {
     readonly property int llamaResolvedContextLength: sessionSettings.resolvedContextLength
 
     // ── Derived engine readiness (convenience for UI enable/disable) ──────────
-    // QtWhisper::Status::Ready == 2, QtLlama::Status::Ready == 2
     readonly property bool isSttReady      : whisperStatus  === 2
     readonly property bool isLlmReady      : llamaStatus    === 2
     readonly property bool isEmbedderReady : embedderStatus === 2
@@ -49,10 +48,16 @@ QtObject {
     readonly property string lastErrorString : SessionManager.lastErrorString
 
     // ── Session Lifecycle ─────────────────────────────────────────────────────
-    function startNewSession()      { sessionSvc.createSession() }
+    function startNewSession(title = "New Session") {
+        let s = sessionSvc.createSession();
+        if (s && title !== "New Session" && title !== "") {
+            s.title = title;
+        }
+    }
+
     function openSession(sessionId) { sessionSvc.openSessionById(sessionId) }
     function closeActiveSession()   {
-        SessionManager.stopRecording() // ensure mic is off before closing
+        SessionManager.stopRecording()
         sessionSvc.closeSession()
     }
 
@@ -72,12 +77,12 @@ QtObject {
     function selectModel(subMgr, index)   { subMgr.selectDefault(index) }
     function isSelectedModel(subMgr, url) { return subMgr.storagePath(url) === subMgr.selectedPath }
 
+    // ── Settings Management ───────────────────────────────────────────────────
+    function resetSessionSettings() {
+        sessionSettings.resetToDefaults()
+    }
+
     // ── Error Management ──────────────────────────────────────────────────────
     function clearError() { SessionManager.clearError() }
-
-    // ── Reload prompt ─────────────────────────────────────────────────────────
-    // Connect settings.reloadRequired in your root UI component to show a
-    // confirmation dialog, then call this on user confirmation.
     function confirmReload() { SessionManager.reloadModels() }
-
 }

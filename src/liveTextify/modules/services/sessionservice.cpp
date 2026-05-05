@@ -80,18 +80,17 @@ void SessionService::loadHistory() {
 
 // ── CRUD ──────────────────────────────────────────────────────────────────────
 
-Session* SessionService::createSession() {
+Session* SessionService::createSession(const QString& title) {
     Session* session = new Session(this);
     session->setConfig(mSettings->toConfig());
 
     SessionRecord rec;
-    rec.title     = "New Session";
+    rec.title     = title;
     rec.createdAt = QDateTime::currentDateTime();
 
     const int dbId = mDatabaseService->saveSession(rec);
     if (dbId == -1) {
         Logger::error("SessionService: Failed to persist new session.");
-        delete session;
         return nullptr;
     }
 
