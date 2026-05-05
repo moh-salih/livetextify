@@ -14,17 +14,32 @@ Page {
     property int sessionSeconds: 0
 
     // Model name derivations using sessionConfig
-    property string activeSttModelName: AppState.sessionSvc.sessionConfig.sttModelPath
-        ? AppState.sessionSvc.sessionConfig.sttModelPath.split('/').pop() : "No STT Model"
+    property string activeSttModelName: {
+        if (AppState.sttModel && AppState.sttModel.selectedPath) {
+            return AppState.sttModel.selectedPath.split('/').pop()
+        }
+        return "No STT Model"
+    }
 
-    property string activeLlmModelName: AppState.sessionSvc.sessionConfig.llmModelPath
-        ? AppState.sessionSvc.sessionConfig.llmModelPath.split('/').pop() : "No LLM Model"
+    property string activeLlmModelName: {
+        if (AppState.llmModel && AppState.llmModel.selectedPath) {
+            return AppState.llmModel.selectedPath.split('/').pop()
+        }
+        return "No LLM Model"
+    }
 
-    // Timer logic brought to page level. Only ticks while status == 1 (Recording)
+    property string activeEmbModelName: {
+        if (AppState.embModel && AppState.embModel.selectedPath) {
+            return AppState.embModel.selectedPath.split('/').pop()
+        }
+        return "No Embedding Model"
+    }
+
+    // FIX: Bind directly to the actual audio pipeline recording status!
     Timer {
         id: sessionTimer
         interval: 1000
-        running: AppState.sessionStatus === 1
+        running: AppState.isRecording
         repeat: true
         onTriggered: root.sessionSeconds++
     }
@@ -39,6 +54,13 @@ Page {
         bottomColor: Theme.background
     }
 
+    // Add the Panel Overlay
+    Components.SessionSettingsPanel {
+        id: sessionSettingsPanel
+        // Bind directly to the active session's settings manager
+        settings: SessionManager.sessionService.settings
+    }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
@@ -46,11 +68,10 @@ Page {
         // --- Mediator Pattern: Handle components entirely via bound properties and signals ---
         Components.UnifiedSessionHeader {
             Layout.fillWidth: true
-            visible: !Theme.isClearMode
 
-            // Push State Downward
+            // Push State Downward (FIXED to use isRecording)
             sessionTitle: AppState.activeSession ? AppState.activeSession.title : "No Active Session"
-            sessionStatus: AppState.sessionStatus
+            isRecording: AppState.isRecording
             sessionSeconds: root.sessionSeconds
 
             // Context-sensitive active model label and list
@@ -65,7 +86,7 @@ Page {
                 }
             }
             onConfigClicked: {
-                Navigator.goToSettings()
+                sessionSettingsPanel.open()
             }
             onModelSelected: function(index) {
                 if (root.showChat) {
@@ -93,7 +114,8 @@ Page {
                 Components.LiveTranscriptTab {
                     Layout.fillWidth: true; Layout.fillHeight: true
                     session: AppState.activeSession
-                    isRecording: AppState.sessionStatus === 1
+                    // FIX: Pass the accurate boolean state here too
+                    isRecording: AppState.isRecording
                 }
 
                 Components.LiveChatTab {
@@ -101,7 +123,7 @@ Page {
                     chatModel: AppState.activeSession ? AppState.activeSession.conversation.messages : null
                     isGenerating: AppState.isLlamaGenerating
                     onSendMessage: function(text) { AppState.sendChatMessage(text) }
-                    onStopGeneration: function() { AppState.stopLlmGeneration() }
+                    onStopGeneration: function() { AppState.stopGeneration() }
                 }
             }
 
@@ -126,8 +148,6 @@ Page {
                         Layout.alignment: Qt.AlignHCenter | Qt.AlignBottom
                         icon: root.showChat ? "description" : "forum"
                         text: root.showChat ? "Transcript" : "Chat"
-
-                        // Prevent the button from forcing the sidebar wider than it needs to be
                         Layout.maximumWidth: 160
 
                         onClicked: root.showChat = !root.showChat

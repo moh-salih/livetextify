@@ -10,14 +10,12 @@ Rectangle {
 
     // --- Pure UI Properties (Data flows downward) ---
     property string sessionTitle: "Meeting"
-    property int sessionStatus: 0 // 0: Idle, 1: Recording, 2: Paused
+    // FIX: Using a simple bool for recording state instead of the stagnant sessionStatus int
+    property bool isRecording: false
     property int sessionSeconds: 0
     property string activeModelName: "Neural-v4-XL"
     property string modelTypeLabel: "MODEL:"
     property var availableModels: null
-
-    // Helper for visual states
-    readonly property bool isRecording: sessionStatus === 1
 
     // --- Pure UI Signals (Actions flow upward) ---
     signal titleEdited(string newTitle)
@@ -122,7 +120,8 @@ Rectangle {
                             }
                         }
                         Text {
-                            text: root.sessionStatus === 1 ? "LIVE SESSION" : (root.sessionStatus === 2 ? "PAUSED" : "READY")
+                            // FIX: Checking isRecording directly
+                            text: root.isRecording ? "LIVE SESSION" : "READY"
                             font.family: Fonts.bodyFamily
                             font.pixelSize: 10
                             font.bold: true
@@ -148,12 +147,13 @@ Rectangle {
                 anchors.fill: parent
                 anchors.leftMargin: 32
                 anchors.rightMargin: 32
+                spacing: 16
 
                 // Model Selection
                 Rectangle {
                     id: modelSelectorContainer
                     Layout.preferredHeight: 36
-                    Layout.preferredWidth: modelRow.implicitWidth + 24
+                    Layout.fillWidth: true // <--- Takes all available center space
                     radius: 8
                     color: modelHover.containsMouse || modelDropdown.opened ? Theme.surfaceContainerHigh : Theme.surfaceContainer
                     border.color: Qt.rgba(Theme.outlineVariant.r, Theme.outlineVariant.g, Theme.outlineVariant.b, 0.1)
@@ -162,10 +162,21 @@ Rectangle {
 
                     RowLayout {
                         id: modelRow
-                        anchors.centerIn: parent
+                        anchors.fill: parent
+                        anchors.leftMargin: 12
+                        anchors.rightMargin: 12
                         spacing: 8
+
                         Text { text: root.modelTypeLabel; font.family: Fonts.bodyFamily; font.pixelSize: 10; font.bold: true; color: Theme.textOnSurfaceVariant }
-                        Text { text: root.activeModelName; font.family: Fonts.bodyFamily; font.pixelSize: 12; font.bold: true; color: Theme.primary }
+                        Text {
+                            text: root.activeModelName;
+                            font.family: Fonts.bodyFamily;
+                            font.pixelSize: 12;
+                            font.bold: true;
+                            color: Theme.primary
+                            Layout.fillWidth: true // Allows long model names to take up space and truncate properly
+                            elide: Text.ElideRight
+                        }
                         Text { text: "expand_more"; font.family: Fonts.iconFamily; font.pixelSize: 16; color: Theme.textOnSurfaceVariant }
                     }
                     MouseArea {
@@ -181,7 +192,7 @@ Rectangle {
                         id: modelDropdown
                         y: parent.height + 8
                         x: 0
-                        width: 280
+                        width: parent.width // Match the parent's stretched width
                         padding: 8
 
                         // Evaluate downloaded models dynamically when opening to fix the placeholder logic
@@ -307,8 +318,6 @@ Rectangle {
                     }
                 }
 
-                Item { Layout.fillWidth: true } // Center Spacer
-
                 // Right-aligned Session Controls
                 RowLayout {
                     spacing: 16
@@ -358,7 +367,8 @@ Rectangle {
                         Text {
                             id: toggleText
                             anchors.centerIn: parent
-                            text: root.sessionStatus === 1 ? "Pause" : (root.sessionStatus === 2 ? "Resume" : "Start")
+                            // FIX: Using isRecording
+                            text: root.isRecording ? "Pause" : "Start"
                             font.family: Fonts.bodyFamily
                             font.pixelSize: 13
                             font.bold: true

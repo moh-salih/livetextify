@@ -6,16 +6,21 @@ struct ModelItem {
     QString fileName;
     QString url;
     QString size;
-    bool downloaded = false;
+    bool downloaded  = false;
     bool downloading = false;
-    float progress = 0.0f;
-    bool isDefault = false;
+    float progress   = 0.0f;
+    bool isDefault   = false;
+    bool isLocal     = false; // true = on disk but absent from the remote catalogue
 };
 
 class ModelListModel : public QAbstractListModel {
     Q_OBJECT
 public:
-    enum ModelRoles {FileNameRole = Qt::UserRole + 1, UrlRole, SizeRole, DownloadedRole, DownloadingRole, ProgressRole, IsDefaultRole };
+    enum ModelRoles {
+        FileNameRole = Qt::UserRole + 1,
+        UrlRole, SizeRole, DownloadedRole, DownloadingRole,
+        ProgressRole, IsDefaultRole, IsLocalRole
+    };
 
     explicit ModelListModel(QObject *parent = nullptr);
 
@@ -28,10 +33,12 @@ public:
     void setDownloadingStatus(int row, bool downloading);
     void setDownloadedStatus(int row, bool downloaded);
     void setExclusiveDefault(int row);
+    void appendItem(const ModelItem& item);
+    void removeItem(int row);
 
     const ModelItem& getItem(int row) const;
     const QVector<ModelItem>& getAll() const;
-    int findIndexByPath(const QString &fullPath, const QString &baseDir) const;
+    int findIndexByPath(const QString &fullPath) const;
 
 private:
     QVector<ModelItem> m_items;

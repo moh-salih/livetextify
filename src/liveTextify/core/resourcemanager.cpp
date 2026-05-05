@@ -12,13 +12,6 @@ void ResourceManager::loadResources(){
     setupIcons();
     setupFonts();
     Logger::info("Loaded " + QString::number(mAvailableIconsFonts.size()) + " icon font(s) and " + QString::number(mAvailableFonts.size()) + " UI font(s).");
-    // list loaded fonts using Logger as one string, and separate by line breaks
-    if (!mAvailableIconsFonts.isEmpty()) {
-        Logger::info("Icon Fonts:\n" + mAvailableIconsFonts.join("\n\t\t\t"));
-    }
-    if (!mAvailableFonts.isEmpty()) {
-        Logger::info("UI Fonts:\n" + mAvailableFonts.join("\n\t\t\t"));
-    }
 }
 
 void ResourceManager::setupIcons(){

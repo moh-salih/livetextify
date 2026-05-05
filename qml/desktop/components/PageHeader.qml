@@ -18,6 +18,7 @@ ColumnLayout {
         font.bold: true
         color: root.titleColor
         Layout.fillWidth: true
+        padding: 16
     }
 
     Text {
@@ -29,5 +30,6 @@ ColumnLayout {
         Layout.maximumWidth: 800
         wrapMode: Text.WordWrap
         Layout.fillWidth: true
+        padding: 8
     }
 }

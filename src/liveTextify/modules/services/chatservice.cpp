@@ -1,80 +1,26 @@
 #include "chatservice.h"
 #include "liveTextify/modules/services/databaseservice.h"
-#include "liveTextify/modules/database/repositories/chunkrepository.h"
 #include "liveTextify/core/Logger.h"
 
 #include <QtLlama/Session.h>
 #include <QtLlama/Engine.h>
-#include <QtLlama/Embedder.h>
-#include <QtLlama/EmbeddingWorker.h>
-#include <QtRag/QtRag.h>
-
-// ── RAG adapters ─────────────────────────────────────────────────────────────
-
-class AppRagEmbedder : public QtRag::IRagEmbedder {
-public:
-    explicit AppRagEmbedder(QtLlama::Embedder* emb, QObject* parent = nullptr)
-        : QtRag::IRagEmbedder(parent), m_emb(emb)
-    {
-
-        connect(m_emb, &QtLlama::Embedder::embeddingReady, this,  &QtRag::IRagEmbedder::embeddingReady);
-
-        connect(m_emb, &QtLlama::Embedder::errorOccurred, this, [this](QtLlama::Error /*e*/) {
-                    emit QtRag::IRagEmbedder::errorOccurred(QtRag::Error::EmbeddingFailed);
-                });
-
-    }
-
-    void generateEmbedding(const QString& text, int chunkIndex) override {
-        m_emb->generateEmbedding(text, chunkIndex);
-    }
-private:
-    QtLlama::Embedder* m_emb;
-};
-
-class AppRagStorage : public QtRag::IRagStorage {
-public:
-    explicit AppRagStorage(DatabaseService* db) : m_db(db) {}
-    bool saveChunk(int sessionId, const QString& text, int chunkIndex,
-                   const std::vector<float>& embedding) override {
-        return m_db->saveChunk(sessionId, text, chunkIndex, embedding);
-    }
-    QVector<QtRag::RagChunk> loadChunks(int sessionId) override {
-        QVector<QtRag::RagChunk> out;
-        for (const auto& c : m_db->loadChunks(sessionId))
-            out.push_back({c.id, c.sessionId, c.chunkIndex, c.text, c.embedding});
-        return out;
-    }
-    int  getChunkCount(int sessionId) override { return m_db->getChunkCount(sessionId); }
-    void clearSession(int sessionId)  override { m_db->deleteChunks(sessionId); }
-private:
-    DatabaseService* m_db;
-};
-
-// ── ChatService ───────────────────────────────────────────────────────────────
 
 ChatService::ChatService(DatabaseService* database, QObject* parent)
     : QObject(parent)
     , m_database(database)
     , m_llama(new QtLlama::Session(this))
-    , m_embedder(new QtLlama::Embedder(this))
 {
     m_llama->initialize(new QtLlama::Engine());
-    m_embedder->initialize(new QtLlama::EmbeddingWorker());
 
-    m_ragEmbedderAdapter = std::make_unique<AppRagEmbedder>(m_embedder);
-    m_ragStorageAdapter  = std::make_unique<AppRagStorage>(m_database);
-
-    updateRagConfig();
-
-    // ── Status ────────────────────────────────────────────────────────────────
     connect(m_llama, &QtLlama::Session::statusChanged,
             this, &ChatService::llamaStatusChanged);
 
-    connect(m_embedder, &QtLlama::Embedder::statusChanged,
-            this, &ChatService::embedderStatusChanged);
+    connect(m_llama, &QtLlama::Session::reloadRequired,
+            this, &ChatService::reloadRequired);
 
-    // ── Generation ────────────────────────────────────────────────────────────
+    connect(m_llama, &QtLlama::Session::contextLengthResolved,
+            this, &ChatService::contextLengthResolved);
+
     connect(m_llama, &QtLlama::Session::textGenerated,
             this, &ChatService::onLLMTextGenerated);
 
@@ -84,73 +30,50 @@ ChatService::ChatService(DatabaseService* database, QObject* parent)
                 onLLMStateChanged(generating);
             });
 
-    // ── Errors ────────────────────────────────────────────────────────────────
     connect(m_llama, &QtLlama::Session::errorOccurred,
             this, &ChatService::llamaErrorOccurred);
-
-    connect(m_embedder, &QtLlama::Embedder::errorOccurred,
-            this, &ChatService::embedderErrorOccurred);
 }
 
 ChatService::~ChatService() = default;
 
-QtLlama::Status ChatService::llamaStatus()    const { return m_llama->status(); }
-QtLlama::Status ChatService::embedderStatus() const { return m_embedder->status(); }
+QtLlama::Status ChatService::llamaStatus() const { return m_llama->status(); }
+bool            ChatService::isGenerating() const { return m_llama ? m_llama->isGenerating() : false; }
 
+void ChatService::reloadModels() {
+    if (!m_activeSession) return;
+    loadModels(m_activeSession);
+}
 
 void ChatService::stopGeneration() {
     m_llama->stop();
 }
 
-void ChatService::updateRagConfig() {
-    m_ragEngine = std::make_unique<QtRag::RagEngine>(
-        m_ragEmbedderAdapter.get(),
-        m_ragStorageAdapter.get(),
-        QtRag::RagConfig(),
-        this);
-
-    connect(m_ragEngine.get(), &QtRag::RagEngine::contextReady,
-            this, &ChatService::onContextReady);
-
-    connect(m_ragEngine.get(), &QtRag::RagEngine::errorOccurred,
-            this, &ChatService::ragErrorOccurred);
-}
+// ── Session lifecycle ─────────────────────────────────────────────────────────
 
 void ChatService::onActiveSessionChanged(Session* activeSession) {
-    m_activeSession = activeSession;
+    m_activeSession              = activeSession;
     m_currentGeneratingSessionId = -1;
-    m_waitingForContext = false;
-    m_lastProcessedLength = 0;
+    m_waitingForContext          = false;
 
     if (!activeSession) { unloadModels(); return; }
-
-    if (activeSession->config().enableRag && m_ragEngine) {
-        m_ragEngine->resetSession(activeSession->sessionID());
-        m_ragEngine->rebuildIndex(activeSession->sessionID());
-    }
 
     loadModels(activeSession);
 }
 
-void ChatService::onActiveSessionConfigChanged(const SessionConfig& config) {
-    m_llama->setConfig(config.llm);
-    m_embedder->setConfig(config.emb);
-    m_llama->reloadModel();
-    m_embedder->reloadModel();
+void ChatService::loadModels(Session* activeSession) {
+    m_llama->setConfig(activeSession->config().llm);
+    m_llama->loadModel();
 }
 
-void ChatService::loadModels(Session* activeSession) {
-    const auto& config = activeSession->config();
-    m_llama->setConfig(config.llm);     // triggers loadModel() inside engine
-    m_embedder->setConfig(config.emb);  // same
-    m_llama->reloadModel();
-    m_embedder->reloadModel();
+void ChatService::onConfigChanged(const SessionConfig& config) {
+    m_llama->setConfig(config.llm);
 }
 
 void ChatService::unloadModels() {
     m_llama->unloadModel();
-    m_embedder->unloadModel();
 }
+
+// ── Message handling ──────────────────────────────────────────────────────────
 
 void ChatService::onUserMessageReady(const QString& text, int sessionId) {
     if (!m_activeSession || m_activeSession->sessionID() != sessionId) return;
@@ -159,11 +82,12 @@ void ChatService::onUserMessageReady(const QString& text, int sessionId) {
     const int messageIndex = m_activeSession->conversation()->messages()->count() - 1;
     m_database->saveMessage(sessionId, Message("user", text, true), messageIndex);
 
-    if (m_activeSession->config().enableRag && m_ragEngine) {
+    if (m_activeSession->config().enableRag) {
+        // Signal approach — decoupled from RagService, SessionManager wires the connection
         m_waitingForContext  = true;
         m_pendingUserMessage = text;
         m_pendingSessionId   = sessionId;
-        m_ragEngine->requestContext(text, sessionId);
+        emit contextRequested(text, sessionId);
     } else {
         generateLlmPrompt(text, sessionId);
     }
@@ -176,7 +100,7 @@ void ChatService::onContextReady(const QString& context, int sessionId) {
     QString enriched = m_pendingUserMessage;
     if (!context.isEmpty()) {
         enriched = QString("Relevant fragments from the live speech transcription:\n%1\n\nUser Question: %2")
-                   .arg(context).arg(m_pendingUserMessage);
+        .arg(context).arg(m_pendingUserMessage);
     }
     generateLlmPrompt(enriched, sessionId);
 }
@@ -202,17 +126,7 @@ void ChatService::generateLlmPrompt(const QString& currentInput, int sessionId) 
     m_llama->generate(messages, sessionId);
 }
 
-void ChatService::onTranscriptionUpdated(const QString& fullText, int sessionId) {
-    if (!m_activeSession) return;
-    if (!m_activeSession->config().enableRag) return;
-    if (m_activeSession->sessionID() != sessionId) return;
-    if (!m_ragEngine) return;
-
-    if (fullText.length() > m_lastProcessedLength + 50) {
-        m_ragEngine->indexText(fullText.mid(m_lastProcessedLength), sessionId);
-        m_lastProcessedLength = fullText.length();
-    }
-}
+// ── LLM state ─────────────────────────────────────────────────────────────────
 
 void ChatService::onLLMTextGenerated(const QString& text, int sessionId) {
     if (!m_activeSession || m_activeSession->sessionID() != sessionId) return;

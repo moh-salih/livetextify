@@ -6,11 +6,11 @@ import LiveTextify
 import "../singletons"
 
 // Made completely transparent. It acts as an invisible hit-box for dragging
-// and a container for the window controls.
+// and a container for the window controls and quick actions.
 Rectangle {
     id: root
 
-    height: 48 // Slimmer height since it only holds window controls
+    height: 48
     color: "transparent"
 
     // --- Native Frameless Window Dragging ---
@@ -60,37 +60,73 @@ Rectangle {
     }
     // ----------------------------------------
 
-    // Window Controls docked to the far right
+    // Action and Window Controls docked to the far right
     RowLayout {
         anchors.right: parent.right
         anchors.top: parent.top
         anchors.bottom: parent.bottom
         anchors.rightMargin: 8
-        spacing: 0
+        spacing: 4
 
-        WindowControlButton {
+        // --- App Actions ---
+        TopBarButton {
+            iconText: "layers"
+            tooltipText: "Model Library"
+            onClicked: Navigator.goToModelLibrary()
+        }
+
+        TopBarButton {
+            iconText: "settings"
+            tooltipText: "Settings"
+            onClicked: Navigator.goToSettings()
+        }
+
+        TopBarButton {
+            iconText: "account_circle"
+            tooltipText: "Profile"
+            onClicked:  Navigator.goToProfile();
+        }
+
+        // Vertical Divider
+        Rectangle {
+            Layout.preferredWidth: 1
+            Layout.preferredHeight: 20
+            Layout.alignment: Qt.AlignVCenter
+            Layout.leftMargin: 8
+            Layout.rightMargin: 8
+            color: Qt.rgba(Theme.outlineVariant.r, Theme.outlineVariant.g, Theme.outlineVariant.b, 0.4)
+        }
+
+        // --- Window Controls ---
+        TopBarButton {
             iconText: "remove"
+            tooltipText: "Minimize"
             onClicked: {
                 const win = root.Window.window
                 if (win) win.showMinimized()
             }
         }
-        WindowControlButton {
+
+        TopBarButton {
             iconText: {
                 const win = root.Window.window
                 return (win?.visibility === Window.Maximized) ? "filter_none" : "crop_square"
             }
+            tooltipText: (root.Window.window?.visibility === Window.Maximized) ? "Restore Down" : "Maximize"
             onClicked: root.toggleMaximized()
         }
-        WindowControlButton {
+
+        TopBarButton {
             iconText: "close"
+            tooltipText: "Close"
             isClose: true
             onClicked: Qt.quit()
         }
     }
 
-    component WindowControlButton: Rectangle {
+    component TopBarButton: Rectangle {
         property string iconText
+        property string tooltipText: ""
         property bool isClose: false
         signal clicked()
 
@@ -100,24 +136,30 @@ Rectangle {
         radius: 6
         color: "transparent"
 
+        ToolTip.text: tooltipText
+        ToolTip.visible: hoverArea.containsMouse && parent.tooltipText !== ""
+        ToolTip.delay: 400
+
         Text {
             anchors.centerIn: parent
             text: parent.iconText
             font.family: Fonts.iconFamily
-            font.pixelSize: 16
+            font.pixelSize: 18
             color: Theme.textOnSurface
             opacity: hoverArea.containsMouse ? 1.0 : 0.6
+            Behavior on opacity { NumberAnimation { duration: 150 } }
         }
+
         MouseArea {
             id: hoverArea
             anchors.fill: parent
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
-            // We use a stronger hover color here since the background might be complex
             onEntered: parent.color = isClose ? "#d7383b" : Qt.rgba(Theme.surfaceContainerHighest.r, Theme.surfaceContainerHighest.g, Theme.surfaceContainerHighest.b, 0.8)
             onExited: parent.color = "transparent"
             onClicked: parent.clicked()
         }
+
         Behavior on color { ColorAnimation { duration: 100 } }
     }
 }

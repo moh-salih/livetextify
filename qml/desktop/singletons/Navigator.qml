@@ -12,6 +12,11 @@ QtObject {
         stack.replace(page);
     }
 
+    function goToProfile() {
+        currentTitle = "Profile"
+        stack.replace(Qt.resolvedUrl("../pages/ProfilePage.qml"))
+    }
+
     function goToDashboard() {
         currentTitle = "Dashboard"
         stack.replace(Qt.resolvedUrl("../pages/DashboardPage.qml"))

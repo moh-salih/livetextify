@@ -11,16 +11,16 @@ Page {
         bottomColor: Theme.background
     }
 
-    header: Components.PageHeader{
-        title: "Settings"
-        description: "Application General Settings"
-    }
-
 
     Text {
         anchors.centerIn: parent
         text: qsTr("Not implemented")
         font.pixelSize: Fonts.display
         color: Theme.outline
+    }
+
+    header: Components.PageHeader{
+        title: "Profile"
+        description: "Show info related to the current user"
     }
 }

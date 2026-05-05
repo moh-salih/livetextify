@@ -84,12 +84,6 @@ Page {
                 visible: root.deferredSessionModel === null
             }
 
-            // Components.DashboardWidgetGrid {
-            //     Layout.fillWidth: true
-            //     visible: root.deferredSessionModel !== null
-            //     sessionModel: root.deferredSessionModel
-            // }
-
             Item { Layout.preferredHeight: 40 }
         }
     }

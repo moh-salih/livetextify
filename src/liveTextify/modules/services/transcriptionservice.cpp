@@ -1,85 +1,59 @@
-// transcriptionservice.cpp
-#include "transcriptionservice.h"
+#include "liveTextify/modules/services/transcriptionservice.h"
 #include "liveTextify/modules/session/session.h"
 #include "liveTextify/core/Logger.h"
 
-#include <QtAudioCapture/AudioPipeline.h>
 #include <QtWhisper/Session.h>
 #include <QtWhisper/Engine.h>
 
 TranscriptionService::TranscriptionService(QObject* parent)
     : QObject(parent)
-    , mAudioPipeline(new QtAudioCapture::AudioPipeline(this))
     , mWhisper(new QtWhisper::Session(this))
 {
     mWhisper->initialize(new QtWhisper::Engine());
 
-    connect(mAudioPipeline, &QtAudioCapture::AudioPipeline::windowReady,
-            mWhisper, &QtWhisper::Session::processAudioWindow);
+    connect(mWhisper, &QtWhisper::Session::statusChanged, this, &TranscriptionService::whisperStatusChanged);
 
-    connect(mAudioPipeline, &QtAudioCapture::AudioPipeline::statusChanged,
-            this, &TranscriptionService::isRecordingChanged);
+    connect(mWhisper, &QtWhisper::Session::segmentTranscribed, this, &TranscriptionService::transcriptionUpdated);
 
-    connect(mWhisper, &QtWhisper::Session::statusChanged,
-            this, &TranscriptionService::whisperStatusChanged);
+    connect(mWhisper, &QtWhisper::Session::errorOccurred, this, &TranscriptionService::errorOccurred);
 
-    connect(mWhisper, &QtWhisper::Session::segmentTranscribed,
-            this, &TranscriptionService::transcriptionUpdated);
+    connect(mWhisper, &QtWhisper::Session::reloadRequired, this, &TranscriptionService::reloadRequired);
 
-    // Forward typed errors up to SessionManager
-    connect(mWhisper, &QtWhisper::Session::errorOccurred,
-            this, &TranscriptionService::errorOccurred);
-
-    connect(mAudioPipeline, &QtAudioCapture::AudioPipeline::errorOccurred,
-            this, &TranscriptionService::audioErrorOccurred);
-
-    connect(mWhisper, &QtWhisper::Session::reloadRequired,this, []{
-        Logger::info("Whisper is saying relad is required");
-    });
-
-}
-
-void TranscriptionService::onActiveSessionConfigChanged(const SessionConfig& config) {
-    mWhisper->setConfig(config.stt);
-    mAudioPipeline->setConfig(config.audio);
-    mWhisper->reloadModel();
+    connect(mWhisper, &QtWhisper::Session::isProcessingChanged, this, &TranscriptionService::isProcessingChanged);
 }
 
 TranscriptionService::~TranscriptionService() = default;
 
-bool TranscriptionService::isRecording() const {
-    return mAudioPipeline->isRunning();
-}
+bool TranscriptionService::isProcessing() const { return mWhisper->isProcessing(); }
 
 QtWhisper::Status TranscriptionService::whisperStatus() const {
     return mWhisper->status();
 }
 
-void TranscriptionService::startTranscription() {
-    mAudioPipeline->start();
-}
-
-void TranscriptionService::stopTranscription() {
-    mAudioPipeline->stop();
+void TranscriptionService::processAudioWindow(const QVector<float>& window) {
+    mWhisper->processAudioWindow(window);
 }
 
 void TranscriptionService::onActiveSessionChanged(Session* activeSession) {
-    if (!activeSession) {
-        unloadModels();
-        return;
-    }
-    Logger::info("[TranscriptionService] active session changed, model: " + activeSession->config().stt.modelPath);
+    mActiveSession = activeSession;
+    if (!activeSession) { unloadModels(); return; }
     loadModels(activeSession);
 }
 
+void TranscriptionService::onConfigChanged(const SessionConfig& config) {
+    mWhisper->setConfig(config.stt);
+}
+
+void TranscriptionService::reloadModels() {
+    if (!mActiveSession) return;
+    loadModels(mActiveSession);
+}
 
 void TranscriptionService::loadModels(Session* activeSession) {
-    const auto& config = activeSession->config();
-    mWhisper->setConfig(config.stt);
-    mAudioPipeline->setConfig(config.audio);
+    mWhisper->setConfig(activeSession->config().stt);
+    mWhisper->loadModel();
 }
 
 void TranscriptionService::unloadModels() {
-    if (isRecording()) stopTranscription();
     mWhisper->unloadModel();
 }

@@ -3,38 +3,34 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 
-
-
-
-class SettingsManager;
+class ResourceMonitor;
 class ResourceManager;
 class PlatformManager;
 class SessionManager;
 class ModelManager;
 
-
 class App : public QObject {
     Q_OBJECT
-    
+
 public:
-    explicit App(int& argc, char* argv[], QObject *parent = nullptr);
+    explicit App(int& argc, char* argv[], QObject* parent = nullptr);
     ~App();
-    
+
     bool init();
-    int exec();
+    int  exec();
 
 private:
     void setupApplicationInfo();
     void setupControllers();
     void setupConnections();
     void loadInitialConfigs();
-    
-    QGuiApplication         mApp;
-    QQmlApplicationEngine   mEngine;
-    
-    SettingsManager       * mSettingsManager    = nullptr;
-    ResourceManager       * mResourceManager    = nullptr;
-    PlatformManager       * mPlatformManager    = nullptr;
-    SessionManager        * mSessionManager     = nullptr;
-    ModelManager          * mModelManager       = nullptr;
+
+    QGuiApplication       mApp;
+    QQmlApplicationEngine mEngine;
+
+    ResourceMonitor* mResourceMonitor = nullptr;
+    ResourceManager* mResourceManager = nullptr;
+    PlatformManager* mPlatformManager = nullptr;
+    SessionManager*  mSessionManager  = nullptr;
+    ModelManager*    mModelManager    = nullptr;
 };

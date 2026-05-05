@@ -1,7 +1,5 @@
 #include "sessionservice.h"
 #include "liveTextify/modules/services/databaseservice.h"
-#include "liveTextify/modules/session/sessionconfigmanager.h"
-#include "liveTextify/modules/settings/settingsmanager.h"
 #include "liveTextify/modules/session/SessionRecord.h"
 #include "liveTextify/core/Logger.h"
 
@@ -9,34 +7,39 @@ SessionService::SessionService(DatabaseService* database, QObject* parent)
     : QObject(parent)
     , mSessionsModel(new SessionModel(this))
     , mDatabaseService(database)
+    , mSettings(new SessionSettings(this))
 {
-    mConfigManager = new SessionConfigManager(this);
-    connect(mConfigManager, &SessionConfigManager::configChanged, this, &SessionService::onConfigChanged);
+    mSettings->load();
+
+    // When settings change, push the new config to the active session
+    // and notify services (ChatService, TranscriptionService) via SessionManager
+    connect(mSettings, &SessionSettings::configChanged, this, &SessionService::onSettingsChanged);
+
+    // Keep activeSessionChanged internal slot wired
     connect(this, &SessionService::activeSessionChanged, this, &SessionService::onActiveSessionChanged);
 }
 
 SessionService::~SessionService() = default;
 
+// ── Settings callbacks ────────────────────────────────────────────────────────
 
 void SessionService::onActiveSessionChanged(Session* session) {
     if (session)
-        mConfigManager->seedFrom(session->config());  // copy struct in
+        mSettings->seedFrom(session->config());
     else
-        mConfigManager->clear();
+        mSettings->seedFrom(SessionConfig{});
 }
 
-void SessionService::onConfigChanged() {
-    if (mActiveSession) {
-        mActiveSession->setConfig(mConfigManager->toConfig());
-        emit activeSessionConfigChanged(mActiveSession->config());
-    }
+void SessionService::onSettingsChanged(const SessionConfig& config) {
+    if (!mActiveSession) return;
+    mActiveSession->setConfig(config);
 }
 
+// ── Transcription ─────────────────────────────────────────────────────────────
 
 void SessionService::onTranscriptionUpdated(const QString& text) {
     if (!mActiveSession) return;
 
-    // Accumulate instead of replace
     QString accumulated = mActiveSession->transcription();
     if (!accumulated.isEmpty()) accumulated += " ";
     accumulated += text;
@@ -46,15 +49,7 @@ void SessionService::onTranscriptionUpdated(const QString& text) {
     emit transcriptionUpdated(accumulated, mActiveSession->sessionID());
 }
 
-void SessionService::onGlobalConfigsUpdated(const SessionConfig& config) {
-    mCurrentGlobalConfig = config;
-    Logger::info("Updating Session Config Manager");
-    if (!mActiveSession || !mConfigManager) return;
-
-    Logger::info("Updated Session Config Manager");
-    mActiveSession->setConfig(config);
-    mConfigManager->seedFrom(config);
-}
+// ── User actions ──────────────────────────────────────────────────────────────
 
 void SessionService::sendMessage(const QString& text) {
     if (!mActiveSession || text.trimmed().isEmpty()) return;
@@ -71,10 +66,10 @@ void SessionService::loadHistory() {
     const QList<SessionRecord> records = mDatabaseService->loadAllSessions();
 
     for (int i = records.size() - 1; i >= 0; --i) {
-        Session* session = sessionFromRecord(records[i]);  // already has conversation
+        Session* session = sessionFromRecord(records[i]);
 
         for (const auto& msg : mDatabaseService->loadMessages(session->sessionID()))
-            session->conversation()->addMessage(msg);  // safe now
+            session->conversation()->addMessage(msg);
 
         session->setTranscription(mDatabaseService->loadTranscription(session->sessionID()));
         mSessionsModel->addSession(session);
@@ -84,9 +79,10 @@ void SessionService::loadHistory() {
 }
 
 // ── CRUD ──────────────────────────────────────────────────────────────────────
+
 Session* SessionService::createSession() {
     Session* session = new Session(this);
-    session->setConfig(mCurrentGlobalConfig);
+    session->setConfig(mSettings->toConfig());
 
     SessionRecord rec;
     rec.title     = "New Session";
@@ -99,13 +95,8 @@ Session* SessionService::createSession() {
         return nullptr;
     }
 
-    session->setDbId(dbId);  // ← must be set before addSession
+    session->setDbId(dbId);
     session->loadConversation({});
-
-    Logger::info("Creating session with models: \n\t" +
-                 session->config().stt.modelPath + "\n\t" +
-                 session->config().llm.modelPath + "\n\t" +
-                 session->config().emb.modelPath);
 
     mSessionsModel->addSession(session);
     emit sessionCreated(mSessionsModel->rowCount() - 1);
@@ -132,15 +123,21 @@ bool SessionService::openSessionById(int sessionId) {
     mSessionsModel->setCurrentSession(target);
 
     emit activeSessionChanged(mActiveSession);
-    Logger::info(QString("SessionService: Active session → %1").arg(sessionId));
+    Logger::info(QString("SessionService: Activated session %1").arg(sessionId));
     return true;
 }
 
 void SessionService::closeSession() {
     if (!mActiveSession) return;
+    const int sessionId = mActiveSession->sessionID();
+    Logger::info(QString("SessionService: Closing session %1").arg(sessionId));
+
     mActiveSession = nullptr;
     mSessionsModel->setCurrentSession(nullptr);
     emit activeSessionChanged(nullptr);
+
+
+    Logger::info(QString("SessionService: Session %1 closed!").arg(sessionId));
 }
 
 bool SessionService::deleteSessionById(int sessionId) {

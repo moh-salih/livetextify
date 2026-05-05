@@ -17,6 +17,7 @@ public:
     Q_INVOKABLE void    downloadModel(int index);
     Q_INVOKABLE void    cancelDownload(const QString& url);
     Q_INVOKABLE void    deleteModel(const QString& url);
+    Q_INVOKABLE void    deleteModelAt(int index);
     Q_INVOKABLE void    selectDefault(int index);
     Q_INVOKABLE void    syncSelectedPath(const QString& path);
     Q_INVOKABLE QString storagePath(const QString& url) const;
@@ -43,6 +44,10 @@ private:
 
     struct Task { int index; };
     QHash<FileDownloader*, Task> mActiveDownloads;
+
+
+
+    void mergeLocalModels();
 };
 
 

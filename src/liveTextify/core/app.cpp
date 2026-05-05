@@ -1,19 +1,19 @@
 #include "liveTextify/core/app.h"
-#include "liveTextify/modules/settings/settingsmanager.h"
 #include "liveTextify/core/resourcemanager.h"
+#include "liveTextify/core/resourcemonitor.h"
+#include "liveTextify/core/Logger.h"
 #include "liveTextify/platform/PlatformManager.h"
 #include "liveTextify/modules/database/databasemanager.h"
-#include "liveTextify/core/Logger.h"
-
 #include "liveTextify/modules/session/sessionmanager.h"
+#include "liveTextify/modules/session/sessionsettings.h"
 #include "liveTextify/modules/models/modelmanager.h"
+#include "liveTextify/modules/services/sessionservice.h"
 
 #include <QtWhisper/Types.h>
 #include <QtWhisper/Session.h>
 #include <QtLlama/Types.h>
 #include <QtLlama/Session.h>
 #include <QtLlama/Embedder.h>
-#include <QtAudioCapture/Types.h>
 
 #include <QQmlContext>
 #include <QIcon>
@@ -21,15 +21,14 @@
 #include <QStandardPaths>
 #include <QSqlError>
 
-static QString getLocalPathFor(const QString& relativeFilePath){
-    return QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation).append("/"+ relativeFilePath);
+static QString getLocalPathFor(const QString& relativeFilePath) {
+    return QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation)
+    .append("/" + relativeFilePath);
 }
 
-
-bool createTables(const QSqlDatabase& db){
+bool createTables(const QSqlDatabase& db) {
     QSqlQuery query(db);
 
-    // Sessions table (Audio fields removed)
     if (!query.exec(
             "CREATE TABLE IF NOT EXISTS sessions ("
             "id INTEGER PRIMARY KEY AUTOINCREMENT,"
@@ -44,14 +43,11 @@ bool createTables(const QSqlDatabase& db){
             "transcription_language TEXT DEFAULT 'en',"
             "auto_detect_language INTEGER DEFAULT 0"
             ")"
-            )
-    )
-    {
-        Logger::error(QString("Failed to create sessions table: %").arg(query.lastError().text()));
+            )) {
+        Logger::error(QString("Failed to create sessions table: %1").arg(query.lastError().text()));
         return false;
     }
 
-    // Messages table
     if (!query.exec(
             "CREATE TABLE IF NOT EXISTS messages ("
             "id INTEGER PRIMARY KEY AUTOINCREMENT,"
@@ -63,12 +59,10 @@ bool createTables(const QSqlDatabase& db){
             "FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE"
             ")"
             )) {
-
-        Logger::error(QString("Failed to create messages table: %").arg(query.lastError().text()));
+        Logger::error(QString("Failed to create messages table: %1").arg(query.lastError().text()));
         return false;
     }
 
-    // Transcriptions table
     if (!query.exec(
             "CREATE TABLE IF NOT EXISTS transcriptions ("
             "session_id INTEGER PRIMARY KEY,"
@@ -77,11 +71,10 @@ bool createTables(const QSqlDatabase& db){
             "FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE"
             ")"
             )) {
-        Logger::error(QString("Failed to create transcriptions table: %").arg(query.lastError().text()));
+        Logger::error(QString("Failed to create transcriptions table: %1").arg(query.lastError().text()));
         return false;
     }
 
-    // Chunks table
     if (!query.exec(
             "CREATE TABLE IF NOT EXISTS chunks ("
             "id INTEGER PRIMARY KEY AUTOINCREMENT,"
@@ -92,8 +85,7 @@ bool createTables(const QSqlDatabase& db){
             "FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE"
             ")"
             )) {
-
-        Logger::error(QString("Failed to create chunks table: %").arg(query.lastError().text()));
+        Logger::error(QString("Failed to create chunks table: %1").arg(query.lastError().text()));
         return false;
     }
 
@@ -103,119 +95,109 @@ bool createTables(const QSqlDatabase& db){
     return true;
 }
 
-
-App::App(int& argc, char* argv[], QObject *parent): QObject(parent), mApp(argc, argv){
+App::App(int& argc, char* argv[], QObject* parent)
+    : QObject(parent)
+    , mApp(argc, argv)
+{
     setupApplicationInfo();
     Logger::initialize(getLocalPathFor("logs/liveTextify.log"), "LiveTextify");
 }
 
-App::~App(){
+App::~App() {
     Logger::info("=== LiveTextify Shutting Down ===");
 }
 
-bool App::init(){
+bool App::init() {
     setupControllers();
     setupConnections();
     loadInitialConfigs();
 
-    if (mResourceManager) {
+    if (mResourceManager)
         mResourceManager->loadResources();
-    }
-
 
     QString appDir = QCoreApplication::applicationDirPath();
     mEngine.addImportPath(appDir + "/qml");
     mEngine.addImportPath("qrc:/qt/qml");
 
-
-
     mEngine.loadFromModule("liveTextify", "Main");
     bool success = !mEngine.rootObjects().isEmpty();
-    success ? Logger::info("Application initialized successfully.") : Logger::critical("Failed to load QML engine.");
+    success ? Logger::info("Application initialized successfully.")
+            : Logger::critical("Failed to load QML engine.");
     return success;
 }
 
-int App::exec(){
+int App::exec() {
     return init() ? mApp.exec() : -1;
 }
 
-void App::setupApplicationInfo()
-{
+void App::setupApplicationInfo() {
     mApp.setOrganizationName("SApps");
     mApp.setOrganizationDomain("com.salih.livetextify");
-    mApp.setApplicationName("liveTextify");
+    mApp.setApplicationName("liveTextifyx");
     mApp.setApplicationDisplayName("LiveTextify: Voice to Text to Insight");
     mApp.setApplicationVersion("1.0.0");
     mApp.setWindowIcon(QIcon(":/icons/app.png"));
 }
 
-void App::setupControllers(){
+void App::setupControllers() {
     bool dbInitialized = DatabaseManager::instance()->initialize(getLocalPathFor("data/liveTextify.db"));
-    if(dbInitialized){
+    if (dbInitialized)
         DatabaseManager::instance()->createTables(createTables);
-    }
- 
 
-
-  // Register Namespaces for Enums
+    // Register enum namespaces for QML
     qmlRegisterUncreatableMetaObject(QtWhisper::staticMetaObject, "QtWhisper", 1, 0, "QtWhisper", "Enum namespace");
-    qmlRegisterUncreatableMetaObject(QtLlama::staticMetaObject, "QtLlama", 1, 0, "QtLlama", "Enum namespace");
-    // qmlRegisterUncreatableMetaObject(QtAudioCapture::staticMetaObject, "QtAudioCapture", 1, 0, "QtAudioCapture", "Enum namespace");
+    qmlRegisterUncreatableMetaObject(QtLlama::staticMetaObject,   "QtLlama",   1, 0, "QtLlama",   "Enum namespace");
 
-    // Register Type bindings
+    // Register non-instantiable types for QML type safety
     qmlRegisterUncreatableType<QtWhisper::Session>("LiveTextify", 1, 0, "WhisperSession", "Cannot instantiate");
-    qmlRegisterUncreatableType<QtLlama::Session>("LiveTextify", 1, 0, "LlamaSession", "Cannot instantiate");
-    qmlRegisterUncreatableType<QtLlama::Embedder>("LiveTextify", 1, 0, "LlamaEmbedder", "Cannot instantiate");
-    
+    qmlRegisterUncreatableType<QtLlama::Session>  ("LiveTextify", 1, 0, "LlamaSession",   "Cannot instantiate");
+    qmlRegisterUncreatableType<QtLlama::Embedder> ("LiveTextify", 1, 0, "LlamaEmbedder",  "Cannot instantiate");
 
-
-    mSettingsManager = new SettingsManager(this);
+    mResourceMonitor = new ResourceMonitor(this);
+    mResourceMonitor->start(2000);
     mResourceManager = new ResourceManager(this);
     mPlatformManager = &PlatformManager::instance();
-    mSessionManager  = new SessionManager(mSettingsManager, this);
+    mSessionManager  = new SessionManager(this);
     mModelManager    = new ModelManager(this);
 
-
-    connect(mModelManager,    &ModelManager::defaultModelChanged, mSettingsManager, &SettingsManager::onDefaultModelChanged);
-
-    mSettingsManager->reload();
-
+    // ModelManager notifies SessionSettings directly when the user picks a model
+    connect(mModelManager, &ModelManager::defaultModelChanged, mSessionManager->sessionService()->settings(), &SessionSettings::setModelPath);
 
     auto ctx = mEngine.rootContext();
     ctx->setContextProperty("PlatformManager", mPlatformManager);
-    ctx->setContextProperty("SettingsManager", mSettingsManager);
     ctx->setContextProperty("ResourceManager", mResourceManager);
+    ctx->setContextProperty("ResourceMonitor", mResourceMonitor);
     ctx->setContextProperty("SessionManager",  mSessionManager);
     ctx->setContextProperty("ModelManager",    mModelManager);
 
-
     if (mPlatformManager->isAndroid()) {
         auto* android = mPlatformManager->android();
-        if (android) {
-            ctx->setContextProperty("Android", android);            
-        }
+        if (android)
+            ctx->setContextProperty("Android", android);
     }
 }
 
-void App::setupConnections()
-{
+void App::setupConnections() {
     connect(&mEngine, &QQmlApplicationEngine::objectCreated,
             this, [](QObject* object, const QUrl& url) {
-                if (!object) {
+                if (!object)
                     Logger::error("Failed to create object from: " + url.toString());
-                }
             });
-            
+
     connect(&mEngine, &QQmlApplicationEngine::quit, &mApp, &QGuiApplication::quit);
 }
-void App::loadInitialConfigs(){
+
+void App::loadInitialConfigs() {
     QQuickStyle::setStyle("Material");
+
+    SessionSettings* settings = mSessionManager->sessionService()->settings();
 
     mModelManager->stt()->loadConfig(":/data/whisper_models.json");
     mModelManager->llm()->loadConfig(":/data/llama_models.json");
     mModelManager->emb()->loadConfig(":/data/embedding_models.json");
 
-    mModelManager->stt()->syncSelectedPath(mSettingsManager->sttConfigManager()->modelPath());
-    mModelManager->llm()->syncSelectedPath(mSettingsManager->llmConfigManager()->modelPath());
-    mModelManager->emb()->syncSelectedPath(mSettingsManager->embConfigManager()->modelPath());
+    // Sync ModelManager's selected path from what SessionSettings persisted
+    mModelManager->stt()->syncSelectedPath(settings->toConfig().stt.modelPath);
+    mModelManager->llm()->syncSelectedPath(settings->toConfig().llm.modelPath);
+    mModelManager->emb()->syncSelectedPath(settings->toConfig().emb.modelPath);
 }

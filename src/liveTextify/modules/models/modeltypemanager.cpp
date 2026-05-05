@@ -34,6 +34,7 @@ bool ModelTypeManager::loadConfig(const QString& jsonPath) {
 
     mModel->populate(items);
     syncDownloadedState();
+    mergeLocalModels();
 
     if (!mSelectedPath.isEmpty())
         syncSelectedPath(mSelectedPath);
@@ -42,16 +43,38 @@ bool ModelTypeManager::loadConfig(const QString& jsonPath) {
     return true;
 }
 
+void ModelTypeManager::mergeLocalModels() {
+    QDir dir(mBaseDir);
+    const QStringList files = dir.entryList({ "*.gguf", "*.bin" }, QDir::Files);
+
+    for (const QString& fileName : files) {
+        // Skip if already represented by a catalogue entry
+        const QString fullPath = mBaseDir + "/" + fileName;
+        if (mModel->findIndexByPath(fullPath) >= 0)
+            continue;
+
+        ModelItem item;
+        item.fileName   = fileName;
+        item.url        = QString(); // no remote URL
+        item.size       = QString::number(QFileInfo(fullPath).size() / (1024 * 1024)) + " MB";
+        item.downloaded = true;
+        item.progress   = 1.0f;
+        item.isLocal    = true;
+
+        mModel->appendItem(item);
+    }
+}
+
 void ModelTypeManager::selectDefault(int index) {
     if (index < 0 || index >= mModel->rowCount()) return;
 
     const ModelItem& item = mModel->getItem(index);
     if (!item.downloaded) return;
 
-    const QString path = storagePath(item.url);
+    const QString path = item.isLocal ? mBaseDir + "/" + item.fileName : storagePath(item.url);
+
     mSelectedPath = path;
     mModel->setExclusiveDefault(index);
-
     emit selectedPathChanged(path);
 }
 
@@ -62,7 +85,7 @@ void ModelTypeManager::syncSelectedPath(const QString& path) {
         return;
     }
 
-    const int idx = mModel->findIndexByPath(path, mBaseDir);
+    const int idx = mModel->findIndexByPath(path);
 
     // Ensure the model exists and is fully downloaded before setting it as default
     if (idx >= 0 && mModel->getItem(idx).downloaded) {
@@ -80,7 +103,10 @@ void ModelTypeManager::downloadModel(int index) {
     if (index < 0 || index >= mModel->rowCount()) return;
 
     const ModelItem& item = mModel->getItem(index);
+    if (item.url.isEmpty()) return;
+
     const QString path = storagePath(item.url);
+
 
     auto* dl = new FileDownloader(QUrl(item.url), path, &mNam, this);
     mActiveDownloads.insert(dl, { index });
@@ -146,6 +172,28 @@ void ModelTypeManager::deleteModel(const QString& url) {
     }
 }
 
+void ModelTypeManager::deleteModelAt(int index) {
+    if (index < 0 || index >= mModel->rowCount()) return;
+
+
+    const ModelItem item = mModel->getItem(index);
+    const QString path = item.isLocal ? mBaseDir + "/" + item.fileName : storagePath(item.url);
+
+    if (!QFile::exists(path) || !QFile::remove(path)) return;
+
+    if (item.isLocal) {
+        mModel->removeItem(index);
+    } else {
+        syncDownloadedState();
+    }
+
+    if (mSelectedPath == path) {
+        mSelectedPath.clear();
+        mModel->setExclusiveDefault(-1);
+        emit selectedPathChanged(QString());
+    }
+}
+
 QString ModelTypeManager::storagePath(const QString& url) const {
     return mBaseDir + "/" + QUrl(url).fileName();
 }
@@ -156,6 +204,7 @@ bool ModelTypeManager::isDownloaded(const QString& url) const {
 
 void ModelTypeManager::syncDownloadedState() {
     for (int i = 0; i < mModel->rowCount(); ++i) {
+        if (mModel->getItem(i).isLocal) continue; // path is managed directly, always downloaded
         const bool exists = QFile::exists(storagePath(mModel->getItem(i).url));
         mModel->setDownloadedStatus(i, exists);
         mModel->updateProgress(i, exists ? 1.0f : 0.0f);

@@ -1,15 +1,11 @@
 #pragma once
 #include <QObject>
-#include <vector>
-#include <memory>
 #include <QtWhisper/Types.h>
-#include <QtAudioCapture/Types.h>
 
 class Session;
 struct SessionConfig;
 
-namespace QtAudioCapture { class AudioPipeline; }
-namespace QtWhisper      { class Session; }
+namespace QtWhisper { class Session; }
 
 class TranscriptionService : public QObject {
     Q_OBJECT
@@ -17,27 +13,26 @@ public:
     explicit TranscriptionService(QObject* parent = nullptr);
     ~TranscriptionService() override;
 
-    bool isRecording() const;
     QtWhisper::Status whisperStatus() const;
+    bool isProcessing() const;
 
 public slots:
-    void startTranscription();
-    void stopTranscription();
+    void processAudioWindow(const QVector<float>& window);
     void onActiveSessionChanged(Session* activeSession);
-    void onActiveSessionConfigChanged(const SessionConfig& config);
+    void onConfigChanged(const SessionConfig& config);
+    void reloadModels();
+
 signals:
-    void isRecordingChanged();
     void whisperStatusChanged(QtWhisper::Status status);
     void transcriptionUpdated(const QString& text);
-
-    // Typed error signals — consumed by SessionManager
+    void reloadRequired();
     void errorOccurred(QtWhisper::Error error);
-    void audioErrorOccurred(QtAudioCapture::Error error);
+    void isProcessingChanged(bool processing);
 
 private:
     void loadModels(Session* activeSession);
     void unloadModels();
 
-    QtAudioCapture::AudioPipeline * mAudioPipeline;
-    QtWhisper::Session            * mWhisper;
+    QtWhisper::Session* mWhisper;
+    Session*            mActiveSession = nullptr;
 };
